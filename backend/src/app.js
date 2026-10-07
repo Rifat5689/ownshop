@@ -9,8 +9,22 @@ import ApiError from "./utils/ApiError.js";
 const app = express();
 
 app.use(helmet());
+const allowedOrigins = [
+    'https://ornionshop.web.app',
+    'https://ownersuite.web.app',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000'
+];
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.includes(origin))) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 
