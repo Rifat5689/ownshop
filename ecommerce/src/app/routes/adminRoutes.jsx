@@ -1,21 +1,48 @@
-import React from 'react'
-import { Routes, Route } from 'react-router-dom'
-import { AdminLayout } from '../../layouts/AdminLayout'
-import Dashboard from '../../pages/admin/Dashboard'
-import Products from '../../pages/admin/Products'
-
+import React from "react";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { AdminLayout } from "../../layouts/AdminLayout";
+import { ProtectedRoute } from "../../components/common/ProtectedRoute";
+import Dashboard from "../../pages/admin/Dashboard";
+import Products from "../../pages/admin/Products";
+import Login from "../../pages/admin/Login/Login";
+import Categories from "../../pages/admin/Categories/Categories";
+import Orders from "../../pages/admin/Orders/Orders";
+import Customers from "../../pages/admin/Customers/Customers";
+import { SettingsView } from "../../features/settings/components/SettingsView";
 export default function AdminRoutes() {
   return (
     <Routes>
-      <Route element={<AdminLayout />}>
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="products" element={<Products />} />
-        <Route path="categories" element={<div>Categories Admin</div>} />
-        <Route path="orders" element={<div>Orders Admin</div>} />
-        <Route path="customers" element={<div>Customers Admin</div>} />
-        <Route path="settings" element={<div>Settings Admin</div>} />
-        <Route path="" element={<Dashboard />} />
+      <Route path="login" element={<Login />} />
+      <Route
+        element={
+          <ProtectedRoute roles={["ADMIN", "ECO"]} loginPath="/admin/login" />
+        }
+      >
+        <Route element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          {["products", "products/create", "products/:id/edit"].map((path) => (
+            <Route key={path} path={path} element={<Products />} />
+          ))}
+          <Route path="categories" element={<Categories />} />
+          {["orders", "orders/:id"].map((path) => (
+            <Route key={path} path={path} element={<Orders />} />
+          ))}
+          {["customers", "customers/:id"].map((path) => (
+            <Route key={path} path={path} element={<Customers />} />
+          ))}
+          <Route path="settings" element={<SettingsView />} />
+        </Route>
       </Route>
+      <Route
+        path="*"
+        element={
+          <div className="state-card">
+            <h1>Page not found</h1>
+            <Link to="/admin/dashboard">Dashboard</Link>
+          </div>
+        }
+      />
     </Routes>
-  )
+  );
 }

@@ -1,2 +1,1 @@
-// Placeholder for Cart Feature
-export const cartService = {};
+export { CartProvider, useCart } from "./CartProvider";

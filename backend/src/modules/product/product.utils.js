@@ -1,17 +1,14 @@
-import slugify from "slugify";
-
-export const getPagination = (params) => {
-  const limit = 20;
-  const page = Number(params.page) || 1;
-  const skip = (page - 1) * limit;
-
-  return { limit, skip };
+const getPagination = (params = {}) => {
+  const page = Math.max(1, Math.floor(Number(params.page) || 1));
+  const limit = Math.min(
+    100,
+    Math.max(1, Math.floor(Number(params.limit) || 20)),
+  );
+  return { limit, skip: (page - 1) * limit, page };
 };
-
-export const createSlug = (text) => {
-  return slugify(text, {
-    lower: true,
-    strict: true,
-    trim: true
-  });
-};
+const createSlug = (text) =>
+  String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+export { getPagination, createSlug };

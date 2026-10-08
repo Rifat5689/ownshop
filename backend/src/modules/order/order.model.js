@@ -1,64 +1,71 @@
 import { model, Schema } from "mongoose";
-
-const orderItemSchema = new Schema({
-    productId : {
-         type : Schema.Types.ObjectId,
-         ref : "Product" ,
-         required : true 
+const orderItemSchema = new Schema(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+      validate: Number.isInteger,
     },
-    quantity : {
-         type : Number , 
-         min : 1,
-         required :true 
-    }
-},{_id : false})
-const paymentSchema = new Schema({
-     paymentMethod : {
-         type : String , 
-         enum : ['cash on delivery' , 'bkash', 'nagad'],
-         default : 'cash on delivery'
-     },
-     paymentStatus : {
-         type : String , 
-         enum : ['pending' , 'paid'] , 
-        default : 'pending' 
-     },
-     paymentId : {
-         type : String , 
-         default : null 
-     }
-},{_id: false})
-
-const orderSchema = new Schema({
-
-      userId : {
-         type : Schema.Types.ObjectId , 
-         ref : 'User',
-         required : true 
-
+  },
+  { _id: false },
+);
+const orderSchema = new Schema(
+  {
+    tenantId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
+      required: true,
+      index: true,
+    },
+    userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    orderItems: [orderItemSchema],
+    shippingDetails: { name: String, phone: String, address: String },
+    shippingFee: { type: Number, default: 0, min: 0 },
+    totalPrice: { type: Number, required: true, min: 0 },
+    payment: {
+      paymentMethod: {
+        type: String,
+        enum: ["cash on delivery"],
+        default: "cash on delivery",
       },
-      orderItems : [orderItemSchema],
-       shippingDetails : {
-        name : String , 
-        phone : String , 
-        address : String ,
-     
-       },
-       totalPrice : {
-         type : Number , 
-        required : true 
+      paymentStatus: {
+        type: String,
+        enum: ["pending", "paid"],
+        default: "pending",
       },
-
-      payment : paymentSchema , 
-      status :{
-         type : String , 
-         enum : ['pending','confirmed', 'processing','delivered'],
-         default : 'pending' 
-      },
-      identipotentKey : String 
-
-},{timestamps : true })
-
-const Order  = model('Order' , orderSchema ) ; 
-export default Order ;
-
+    },
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "confirmed",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "returned",
+      ],
+      default: "pending",
+    },
+    idempotencyKey: { type: String, required: true },
+    requestHash: { type: String, required: true },
+    trackingToken: { type: String, required: true, select: false },
+  },
+  { timestamps: true },
+);
+orderSchema.index(
+  { tenantId: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      tenantId: { $type: "objectId" },
+      idempotencyKey: { $type: "string" },
+    },
+  },
+);
+const Order = model("Order", orderSchema);
+export default Order;

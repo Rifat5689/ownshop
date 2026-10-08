@@ -1,64 +1,135 @@
-import React from 'react'
-
+import React from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { useAdminsPage } from "../../features/admins/hooks/useAdminsPage";
+import { AdminEditor } from "../../features/admins/components/AdminEditor";
+import { QueryState } from "../../components/common/QueryState";
+import { Pagination } from "../../components/common/Pagination";
+import { errorMessage } from "../../services/api";
 export default function Admins() {
+  const hook = useAdminsPage();
+  const { id } = useParams();
+  const { pathname } = useLocation();
+  const editing = pathname.endsWith("/create") || pathname.endsWith("/edit");
+  const admin = hook.query.data?.find((item) => item._id === id);
   return (
-    <div>
+    <>
       <div className="dashboard-header">
         <div>
           <h1>Admin Management</h1>
-          <p>Manage system administrators and their roles.</p>
+          <p>Assign administrators to their stores.</p>
         </div>
-        <button className="btn-primary">
-          <i className="fa-solid fa-user-plus"></i> Add Admin
-        </button>
+        <Link className="btn-primary" to="/admins/create">
+          + Create Admin
+        </Link>
       </div>
-
-      <div className="card">
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img src="https://i.pravatar.cc/150?img=11" alt="Avatar" className="avatar" style={{ width: '32px', height: '32px' }}/>
-                    <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Rifat Hasan</span>
-                  </div>
-                </td>
-                <td>rifat@ownshop.com</td>
-                <td><span style={{ color: 'var(--primary-color)', fontWeight: 500, fontSize: '0.875rem' }}>Super Admin</span></td>
-                <td><span className="status-badge status-active">Active</span></td>
-                <td>
-                  <button className="icon-btn" style={{ marginRight: '10px' }}><i className="fa-regular fa-pen-to-square"></i></button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img src="https://i.pravatar.cc/150?img=12" alt="Avatar" className="avatar" style={{ width: '32px', height: '32px' }}/>
-                    <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Samiul Islam</span>
-                  </div>
-                </td>
-                <td>samiul@ownshop.com</td>
-                <td><span style={{ color: '#0ea5e9', fontWeight: 500, fontSize: '0.875rem' }}>Admin</span></td>
-                <td><span className="status-badge status-active">Active</span></td>
-                <td>
-                  <button className="icon-btn" style={{ marginRight: '10px' }}><i className="fa-regular fa-pen-to-square"></i></button>
-                  <button className="icon-btn" style={{ color: 'var(--danger-color)' }}><i className="fa-regular fa-trash-can"></i></button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  )
+      <QueryState query={hook.query}>
+        {editing ? (
+          id && (!admin || admin.role === "SUPER_ADMIN") ? (
+            <div className="state-card">
+              Administrator cannot be edited here.
+            </div>
+          ) : (
+            <AdminEditor key={id || "new"} admin={admin} hook={hook} />
+          )
+        ) : id ? (
+          admin ? (
+            <section className="card form-stack">
+              <h2>{admin.username}</h2>
+              <p>{admin.email}</p>
+              <p>
+                {admin.role} · {admin.tenantId?.name || "Platform"}
+              </p>
+              {admin.role !== "SUPER_ADMIN" && (
+                <Link className="btn-primary" to={`/admins/${id}/edit`}>
+                  Edit Administrator
+                </Link>
+              )}
+            </section>
+          ) : (
+            <div className="state-card">Administrator not found.</div>
+          )
+        ) : (
+          <>
+            <div className="filters">
+              <label>
+                Search
+                <input
+                  placeholder="Search admins..."
+                  value={hook.search}
+                  onChange={(event) => hook.setSearch(event.target.value)}
+                />
+              </label>
+            </div>
+            {hook.mutation.isError && (
+              <p className="error" role="alert">
+                {errorMessage(hook.mutation.error)}
+              </p>
+            )}
+            <div className="card table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Store</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hook.rows.map((item) => (
+                    <tr key={item._id}>
+                      <td>
+                        <Link to={`/admins/${item._id}`}>{item.username}</Link>
+                      </td>
+                      <td>{item.email}</td>
+                      <td>{item.role}</td>
+                      <td>{item.tenantId?.name || "Platform"}</td>
+                      <td>
+                        <span
+                          className={`status-badge ${item.isActive ? "status-active" : "status-inactive"}`}
+                        >
+                          {item.isActive ? "Active" : "Disabled"}
+                        </span>
+                      </td>
+                      <td>
+                        {item.role !== "SUPER_ADMIN" && (
+                          <div className="row">
+                            <Link to={`/admins/${item._id}/edit`}>Edit</Link>
+                            <button
+                              className="text-button danger"
+                              disabled={hook.mutation.isPending}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `${item.isActive ? "Disable" : "Enable"} ${item.username}?`,
+                                  )
+                                )
+                                  hook.mutation.mutate({
+                                    method: "patch",
+                                    id: item._id,
+                                    data: { isActive: !item.isActive },
+                                  });
+                              }}
+                            >
+                              {item.isActive ? "Disable" : "Enable"}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!hook.rows.length && (
+                <p className="state-card">No administrators found.</p>
+              )}
+            </div>
+            <Pagination {...hook} />
+          </>
+        )}
+      </QueryState>
+    </>
+  );
 }

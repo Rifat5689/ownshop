@@ -1,62 +1,134 @@
-import React, { useState } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
-import { useStore } from '../app/providers/StoreProvider'
-
+import React, { useState, useEffect } from "react";
+import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../app/providers/AuthProvider";
+import { errorMessage } from "../services/api";
+const links = [
+  ["Dashboard", "/admin/dashboard", "▧"],
+  ["Products", "/admin/products", "◇"],
+  ["Categories", "/admin/categories", "▦"],
+  ["Orders", "/admin/orders", "▤"],
+  ["Customers", "/admin/customers", "♙"],
+  ["Store Settings", "/admin/settings", "⚙"],
+];
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
+  const [error, setError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const close = (event) => {
+      if (event.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      await logout();
+      navigate("/admin/login");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSigningOut(false);
+    }
+  };
   return (
     <div className="app-container">
       {sidebarOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }} onClick={() => setSidebarOpen(false)} />
+        <button
+          className="drawer-overlay"
+          aria-label="Close menu"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
-      
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <aside
+        id="admin-sidebar"
+        className={`sidebar ${sidebarOpen ? "open" : ""}`}
+      >
         <div className="sidebar-header">
-          <div className="sidebar-logo"></div>
+          <span className="sidebar-logo">◉</span>
           <h2>Store Admin</h2>
+          <button
+            className="drawer-close"
+            aria-label="Close menu"
+            onClick={() => setSidebarOpen(false)}
+          >
+            ×
+          </button>
         </div>
-        <nav>
+        <div className="sidebar-profile">
+          <span className="profile-circle">
+            {user?.username?.[0]?.toUpperCase()}
+          </span>
+          <div>
+            <strong>{user?.username}</strong>
+            <small>Store Manager</small>
+          </div>
+        </div>
+        <nav aria-label="Admin navigation">
           <ul>
-            <li><NavLink to="/admin/dashboard" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-chart-pie"></i> Dashboard</NavLink></li>
-            <li><NavLink to="/admin/products" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-box-open"></i> Products</NavLink></li>
-            <li><NavLink to="/admin/categories" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-tags"></i> Categories</NavLink></li>
-            <li><NavLink to="/admin/orders" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-cart-shopping"></i> Orders</NavLink></li>
-            <li><NavLink to="/admin/customers" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-users"></i> Customers</NavLink></li>
-            <li><NavLink to="/admin/settings" onClick={() => setSidebarOpen(false)}><i className="fa-solid fa-gear"></i> Settings</NavLink></li>
+            {links.map(([label, to, icon]) => (
+              <li key={to}>
+                <NavLink to={to} onClick={() => setSidebarOpen(false)}>
+                  <span aria-hidden="true">{icon}</span>
+                  {label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
         <div className="sidebar-footer">
-          <img src="https://i.pravatar.cc/150?img=68" alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-          <div className="user-info">
-            <h4 style={{ color: 'white', fontSize: '0.9rem' }}>Admin User</h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--sidebar-text)' }}>Store Manager</p>
-          </div>
+          <button onClick={signOut} disabled={signingOut}>
+            ↪ {signingOut ? "Signing Out..." : "Logout"}
+          </button>
         </div>
       </aside>
-
       <main className="main-content">
         <header className="topbar">
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button className="mobile-menu-btn" onClick={toggleSidebar}>
-              <i className="fa-solid fa-bars"></i>
+          <div className="row">
+            <button
+              className="mobile-menu-btn"
+              aria-label="Open menu"
+              aria-controls="admin-sidebar"
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(true)}
+            >
+              ☰
             </button>
-            <div className="search-bar">
-              <i className="fa-solid fa-search" style={{ color: '#94a3b8' }}></i>
-              <input type="text" placeholder="Search orders, products..." />
-            </div>
+            <span className="muted">Your Store</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-             <button style={{ color: 'var(--text-muted)', fontSize: '1.25rem', border: 'none', background: 'transparent' }}><i className="fa-regular fa-bell"></i></button>
-             <button className="btn-primary" style={{ fontSize: '0.875rem' }} onClick={() => window.open('/', '_blank')}>View Storefront</button>
+          <div className="row">
+            user?.store?.slug &&{" "}
+            <Link
+              className="btn-primary"
+              to={`/${user.store.slug}`}
+              target="_blank"
+            >
+              View Storefront ↗
+            </Link>
+            <span className="profile-circle">
+              {user?.username?.[0]?.toUpperCase()}
+            </span>
           </div>
         </header>
-
         <div className="content-area">
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
           <Outlet />
         </div>
       </main>
+      <nav className="admin-bottom-nav" aria-label="Mobile admin navigation">
+        {links.slice(0, 4).map(([label, to]) => (
+          <NavLink key={to} to={to}>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
-  )
+  );
 }

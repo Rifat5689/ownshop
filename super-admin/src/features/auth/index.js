@@ -1,2 +1,1 @@
-// Placeholder for Authentication Feature
-export const authService = {};
+export { authService } from "./services/authService";

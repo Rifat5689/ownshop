@@ -1,9 +1,17 @@
 import { Router } from "express";
-import { createCart, getCart } from "./cart.controller.js";
+import { verifyJwt } from "../../middlewares/auth.middleware.js";
 
+const cartRouter = Router();
 
-
-const cartRouter = Router() ; 
-
-cartRouter.route('/').get(getCart).post(createCart) ; 
-export { cartRouter } ; 
+// Storefront carts are persisted per tenant in the client. Legacy unscoped carts
+// must not expose data until a tenant migration is explicitly configured.
+cartRouter.use(verifyJwt);
+cartRouter.route("/").all((req, res) =>
+  res.status(410).json({
+    success: false,
+    statusCode: 410,
+    message: "Use the store-specific storefront cart",
+    errors: [],
+  }),
+);
+export { cartRouter };

@@ -1,13 +1,13 @@
-import React from 'react'
-import { AppProviders } from './app/providers/AppProviders'
-import { AppRoutes } from './app/routes'
+import React from "react";
+import { AppProviders } from "./app/providers/AppProviders";
+import { AppRoutes } from "./app/routes";
 
 function App() {
   return (
     <AppProviders>
       <AppRoutes />
     </AppProviders>
-  )
+  );
 }
 
-export default App
+export default App;

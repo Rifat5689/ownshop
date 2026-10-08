@@ -1,201 +1,206 @@
+import mongoose from "mongoose";
+import { randomBytes, createHash } from "node:crypto";
+import ApiError from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import Order from "./order.model.js";
-import { getPagination } from "../product/product.utils.js";
+import Product from "../product/product.model.js";
+import {
+  calculatePrice,
+  validateCheckout,
+  transitions,
+} from "./order.utils.js";
 
-
-
-const createOrder = asyncHandler(async(req,res) =>{
-    const {orderItems , shippingDetails, totalPrice} = req.body ; 
-    const {userId} = req.user ; 
-    const  identipotentKey = req.headers['identipotentKey']  ; 
-   
-     const existing = await Order.findOne({identipotentKey}) ; 
-     if(existing) return res.status(200).json(
-        new ApiResponse(200 , existing , "Order already exist")  
-     ) ; 
-
-     const order = await Order.create({
-         userId , 
-         orderItems , 
-         shippingDetails ,
-         totalPrice,
-         identipotentKey
-
-     })
-
-     return res.status(201).json(
-        new ApiResponse(201 , order , 'Order created successfully')  
-     )
-
-     
-
-})
-
-const getOrder = asyncHandler(async (req, res) =>{
-     const {userId} = req.user ; 
-
-     const orders = await Order.find({userId}).select("-identipotentKey").sort({createdAt: -1 } ).limit(10) ; 
-     if(!orders.length) return res.status(200 ).json(
-        new ApiResponse(200 , null , 'Order not found') 
-     )
-
-     return res.status(200).json(
-        new ApiResponse(200, orders,"Orders fetched successfully" )  
-     )
-
-})
-
-const getAllOrders = asyncHandler(async(req,res) => { 
-    
-   const  {status} = req.params ; 
-   const query = {} ; 
-   if(status!== "all") query.status = status ; 
-    const {limit , skip  } = getPagination(req.query) ; 
-
-    const orders = await Order.find(query).sort({createdAt : -1}).skip(skip).limit(limit) ; 
-    
-    return res.status(200).json(new ApiResponse(200 , orders , "Orders fetched ")) ;
-    
-})
-
-// total revenue 
-// total orders
-// total customers
-
-// dashboard graph 
-// last 30 days data 
-// total order by each day ..  0 , 5, 10 , 15, 20 , 25, 30 
-const getDashboardsummary  = asyncHandler(async(req,res) => {
-      
-    const raw =await  Order.aggregate([
-        {$facet : {
-              totalRevenue : [
-                 {
-                     $match : {"payment.paymentStatus" : "paid"} , 
-
-                 },{ 
-                      $group : {_id : null , 
-                        total  : {$sum : "$totalPrice"}
-                     }
-                 }
-              ],
-
-              totalOrders : [
-                 {$group : {_id : null , 
-                    total : {$sum : 1} 
-                 }}
-              ],
-              totalCustomers : [
-                 {
-                     $group : {_id :  "$userId" }
-                 },
-                 {
-                     $count : "total" 
-                 }
-              ]
-        }}
-    ])
-
-    const result = raw[0];
-    const totalRevenueVal = result.totalRevenue?.[0]?.total || 0;
-    const totalOrdersVal = result.totalOrders?.[0]?.total || 0;
-    const totalCustomersVal = result.totalCustomers?.[0]?.total || 0;
-
-        
-           
-
-
-
-    const summary = {
-         totalRevenue: totalRevenueVal,
-         totalOrders: totalOrdersVal,
-         totalCustomers: totalCustomersVal
-    }
-
-    return res.status(200).
-    json(new ApiResponse(200 , summary , "Stats sent " ));
-
-})
-
-const getDashboardAnalytics = asyncHandler(async (req,res)=>{
-     const {range} = req.body ; 
-
-     // last week 
-     
-       if(range ==='weekly') {
-            
-         const sevenDaysAgo = new Date(Date.now() - 7*3600*24*1000) ; 
-          const weeklyOrders =  await Order.aggregate([
-            {
-               
-               $match :  { createdAt : {$gte : sevenDaysAgo}}},
-              {
-               
-                 $group : {
-                    _id : {
-                      $dateToString : {
-                         format : "%d-%m-%y" , 
-                         date : "$createdAt" 
-                      }
-                    },
-                    totalOrders : {$sum : 1} , 
-                 }
-
-
-
-              },{
-                 $sort : {_id : 1} 
-              }
-          ])
-
-          return res.status(200).json(
-            new ApiResponse(200 , weeklyOrders , "Weekly analytics fetched")
-          )
-       }
-   
-
-     else if(range ==="monthly") 
-     {
-        const thirtyDaysAgo = new Date(Date.now() - 30*3600*24*1000) ; 
-        const monthlyOrders =  await Order.aggregate([
+const createOrder = asyncHandler(async (req, res) => {
+  validateCheckout(req.body);
+  const key = req.get("Idempotency-Key");
+  if (!key || !/^[a-zA-Z0-9-]{16,100}$/.test(key))
+    throw new ApiError(400, "A valid Idempotency-Key is required");
+  const shippingDetails = Object.fromEntries(
+    ["name", "phone", "address"].map((field) => [
+      field,
+      req.body.shippingDetails[field].trim(),
+    ]),
+  );
+  const requestHash = createHash("sha256")
+    .update(
+      JSON.stringify({ orderItems: req.body.orderItems, shippingDetails }),
+    )
+    .digest("hex");
+  const session = await mongoose.startSession();
+  let order;
+  try {
+    await session.withTransaction(async () => {
+      order = await Order.findOne({
+        tenantId: req.store._id,
+        idempotencyKey: key,
+      })
+        .select("+trackingToken")
+        .session(session);
+      if (order) {
+        if (order.requestHash !== requestHash)
+          throw new ApiError(
+            409,
+            "Checkout key was already used for a different order",
+          );
+        return;
+      }
+      const items = [];
+      for (const item of req.body.orderItems) {
+        const product = await Product.findOneAndUpdate(
           {
-             
-             $match :  { createdAt : {$gte : thirtyDaysAgo}}},
-            {
-             
-               $group : {
-                  _id : {
-                    $dateToString : {
-                       format : "%d-%m-%y" , 
-                       date : "$createdAt" 
-                    }
-                  },
-                  totalOrders : {$sum : 1} , 
-               }
-
-
-
-            },{
-               $sort : {_id : 1} 
-            }
-        ])
-
-        return res.status(200).json(
-            new ApiResponse(200 , monthlyOrders , "Monthly analytics fetched")
-          )
-     }
-     
-     else {
-        throw new ApiError(400, "Invalid range. Use 'weekly' or 'monthly'");
-     }
-
-})
-  
-const analytics = asyncHandler(async(req,res) => {
-     
-   //revenue..order..customer 
-   
-
-})
-
+            _id: item.productId,
+            tenantId: req.store._id,
+            isActive: true,
+            stock: { $gte: item.quantity },
+          },
+          { $inc: { stock: -item.quantity } },
+          { new: true, session },
+        );
+        if (!product)
+          throw new ApiError(
+            409,
+            "A product is unavailable or has insufficient stock. Please review your cart.",
+          );
+        items.push({
+          productId: product._id,
+          name: product.name,
+          price: calculatePrice(product),
+          quantity: item.quantity,
+        });
+      }
+      const shippingFee = req.store.shippingFee || 0;
+      const totalPrice =
+        Math.round(
+          (items.reduce(
+            (total, item) => total + item.price * item.quantity,
+            0,
+          ) +
+            shippingFee) *
+            100,
+        ) / 100;
+      [order] = await Order.create(
+        [
+          {
+            tenantId: req.store._id,
+            orderItems: items,
+            shippingDetails,
+            shippingFee,
+            totalPrice,
+            payment: {
+              paymentMethod: "cash on delivery",
+              paymentStatus: "pending",
+            },
+            idempotencyKey: key,
+            requestHash,
+            trackingToken: randomBytes(32).toString("hex"),
+          },
+        ],
+        { session },
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        _id: order._id,
+        totalPrice: order.totalPrice,
+        status: order.status,
+        trackingToken: order.trackingToken,
+      },
+      "Order placed",
+    ),
+  );
+});
+const getOrder = asyncHandler(async (req, res) => {
+  const token = req.get("X-Tracking-Token");
+  if (!token) throw new ApiError(401, "Order tracking token required");
+  const order = await Order.findOne({
+    _id: req.params.id,
+    tenantId: req.store._id,
+    trackingToken: token,
+  }).select("-idempotencyKey -requestHash");
+  if (!order) throw new ApiError(404, "Order not found");
+  return res.json(new ApiResponse(200, order, "Order fetched"));
+});
+const getAllOrders = asyncHandler(async (req, res) => {
+  const query =
+    req.user.role === "SUPER_ADMIN" ? {} : { tenantId: req.store._id };
+  if (req.query.status && req.query.status !== "all")
+    query.status = req.query.status;
+  return res.json(
+    new ApiResponse(
+      200,
+      await Order.find(query)
+        .select("-idempotencyKey -requestHash")
+        .sort({ createdAt: -1 })
+        .limit(500),
+      "Orders fetched",
+    ),
+  );
+});
+const getAdminOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({
+    _id: req.params.id,
+    tenantId: req.store._id,
+  }).select("-idempotencyKey -requestHash");
+  if (!order) throw new ApiError(404, "Order not found");
+  return res.json(new ApiResponse(200, order, "Order fetched"));
+});
+const updateOrder = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const session = await mongoose.startSession();
+  let order;
+  try {
+    await session.withTransaction(async () => {
+      order = await Order.findOne({
+        _id: req.params.id,
+        tenantId: req.store._id,
+      }).session(session);
+      if (!order) throw new ApiError(404, "Order not found");
+      if (!transitions[order.status]?.includes(status))
+        throw new ApiError(400, "Invalid order status transition");
+      if (status === "cancelled" || status === "returned") {
+        for (const item of order.orderItems)
+          await Product.updateOne(
+            { _id: item.productId, tenantId: req.store._id },
+            { $inc: { stock: item.quantity } },
+            { session },
+          );
+      }
+      order.status = status;
+      if (status === "delivered") order.payment.paymentStatus = "paid";
+      if (status === "returned") order.payment.paymentStatus = "pending";
+      await order.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
+  return res.json(new ApiResponse(200, order, "Order updated"));
+});
+const getCustomers = asyncHandler(async (req, res) => {
+  const customers = await Order.aggregate([
+    { $match: { tenantId: req.store._id } },
+    {
+      $group: {
+        _id: "$shippingDetails.phone",
+        name: { $last: "$shippingDetails.name" },
+        address: { $last: "$shippingDetails.address" },
+        orders: { $sum: 1 },
+        total: { $sum: "$totalPrice" },
+      },
+    },
+  ]);
+  return res.json(new ApiResponse(200, customers, "Customers fetched"));
+});
+export {
+  createOrder,
+  getOrder,
+  getAllOrders,
+  getAdminOrder,
+  updateOrder,
+  getCustomers,
+};

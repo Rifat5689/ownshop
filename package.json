@@ -1,0 +1,15 @@
+{
+  "name": "ownshop-validation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:api": "node --test tests/api.integration.test.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "mongodb-memory-server": "^10.2.0",
+    "prettier": "^3.9.9"
+  }
+}

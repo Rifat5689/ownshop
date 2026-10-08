@@ -1,0 +1,10 @@
+**/node_modules/
+**/dist/
+**/.firebase/
+**/.env
+**/.env.*
+!**/.env.example
+environment variables data/
+test-results/
+playwright-report/
+*.log

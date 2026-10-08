@@ -1,42 +1,102 @@
-import React from 'react'
-import { Outlet, Link, useParams } from 'react-router-dom'
-import { useStore } from '../app/providers/StoreProvider'
-
-export function StoreLayout() {
-  const { storeSlug } = useStore()
-  const params = useParams()
-  const slug = storeSlug || params.storeSlug
-
+import React from "react";
+import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
+import { useStore } from "../app/providers/StoreProvider";
+import { CartProvider, useCart } from "../features/cart/CartProvider";
+import { QueryState } from "../components/common/QueryState";
+function StoreShell() {
+  const { storeSlug, store } = useStore();
+  const { count, notice, dismissNotice } = useCart();
+  const navigate = useNavigate();
+  const base = `/${storeSlug}`;
+  const links = [
+    ["Home", base],
+    ["Categories", `${base}/categories`],
+    [`Cart (${count})`, `${base}/cart`],
+    ["Wishlist", `${base}/wishlist`],
+    ["Account", `${base}/account`],
+  ];
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ background: 'white', position: 'sticky', top: 0, zIndex: 50, borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to={`/${slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '10px' }}>
-             <div style={{ width: '40px', height: '40px', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2rem' }}>
-                {slug?.charAt(0).toUpperCase()}
-             </div>
-             <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{slug?.toUpperCase() || 'STORE'}</h1>
+    <div className="store-shell">
+      <header className="shop-header">
+        <div className="shop-header-inner">
+          <Link className="brand" to={base}>
+            <span>◉</span>
+            {store.name}
           </Link>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <Link to={`/${slug}/products`} style={{ textDecoration: 'none', color: '#475569', fontWeight: 500 }}>Products</Link>
-            <Link to={`/${slug}/categories`} style={{ textDecoration: 'none', color: '#475569', fontWeight: 500 }}>Categories</Link>
-            <Link to={`/${slug}/cart`} style={{ textDecoration: 'none', color: '#475569', fontWeight: 500, position: 'relative' }}>
-              <i className="fa-solid fa-cart-shopping" style={{ fontSize: '1.25rem' }}></i>
-              <span style={{ position: 'absolute', top: '-8px', right: '-12px', background: 'var(--primary-color)', color: 'white', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>0</span>
+          <form
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              navigate(
+                `${base}/products?q=${encodeURIComponent(new FormData(event.currentTarget).get("q"))}`,
+              );
+            }}
+          >
+            <input
+              name="q"
+              aria-label="Search products"
+              placeholder="Search products, brands and more..."
+            />
+            <button aria-label="Search">⌕</button>
+          </form>
+          <nav>
+            <Link to={`${base}/products`}>Shop</Link>
+            <Link to={`${base}/categories`}>Categories</Link>
+            <Link to={`${base}/account`} aria-label="Account">
+              ♙
             </Link>
-            <button className="btn-primary" style={{ borderRadius: '99px' }}>Sign In</button>
+            <Link to={`${base}/wishlist`} aria-label="Wishlist">
+              ♡
+            </Link>
+            <Link to={`${base}/cart`}>Cart ({count})</Link>
           </nav>
         </div>
       </header>
-      
-      <main style={{ flexGrow: 1, background: '#f8fafc' }}>
+      {notice && (
+        <div className="toast" role="status">
+          {notice}
+          <button aria-label="Dismiss notification" onClick={dismissNotice}>
+            ×
+          </button>
+        </div>
+      )}
+      <main className="shop-main">
         <Outlet />
       </main>
-
-      <footer style={{ background: '#0f172a', color: '#94a3b8', padding: '3rem 2rem', textAlign: 'center' }}>
-         <p>&copy; {new Date().getFullYear()} {slug?.toUpperCase()}. All rights reserved.</p>
-         <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>Powered by OwnShop SaaS</p>
+      <footer className="shop-footer">
+        <strong>{store.name}</strong>
+        <p>{store.description}</p>
+        <div className="row">
+          <Link to={`${base}/products`}>Shop</Link>
+          <Link to={`${base}/orders`}>My Orders</Link>
+          {store.supportEmail && (
+            <a href={`mailto:${store.supportEmail}`}>Contact</a>
+          )}
+          <Link to="/admin/login">Merchant Login</Link>
+        </div>
+        <p>
+          © {new Date().getFullYear()} {store.name} · Powered by OwnShop
+        </p>
       </footer>
+      <nav className="bottom-nav" aria-label="Mobile navigation">
+        {links.map(([label, to]) => (
+          <NavLink end key={to} to={to}>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
-  )
+  );
+}
+export function StoreLayout() {
+  const { store, query } = useStore();
+  return (
+    <QueryState query={query}>
+      {store && (
+        <CartProvider key={store._id} store={store}>
+          <StoreShell />
+        </CartProvider>
+      )}
+    </QueryState>
+  );
 }
