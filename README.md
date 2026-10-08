@@ -6,7 +6,7 @@ Two independently hosted React applications share one tenant-aware Express API:
 - `ecommerce/`: public stores and merchant administration, Firebase project `ornionshop`.
 - `backend/`: Express 5, Mongoose and JWT authentication, deployed separately on Azure.
 
-Each store uses `/:storeSlug`; stores do not need separate React builds. Merchant administration uses `/admin`, while platform administration uses the other application.
+Each store uses `/:storeSlug`; stores do not need separate React builds. Merchant administration uses `/:storeSlug/admin`; `/` and the old `/admin` URL show Page not found, while platform administration uses the other application.
 
 **Release status:** the implemented cash-on-delivery MVP passes local checks, but production launch is blocked. Read [MARKET_READINESS.md](MARKET_READINESS.md) for verification evidence, design gaps and required production work. No production deployment or database migration was performed in this audit.
 
@@ -23,7 +23,7 @@ npm ci --prefix ecommerce
 npm ci --prefix super-admin
 ```
 
-Copy each application's `.env.example` to `.env` if it does not already exist. Preserve existing settings. Configure backend MongoDB and distinct token secrets. For local frontends set `VITE_API_URL=http://localhost:5000/api/v1`, and set the super admin's `VITE_STOREFRONT_URL=http://localhost:5173`. Backend `NODE_ENV=development` permits the documented local origins.
+Copy each application's `.env.example` to `.env` if it does not already exist. Preserve existing settings. Configure backend MongoDB and distinct token secrets. For local frontends set `VITE_API_URL=http://127.0.0.1:5000/api/v1`, and set the super admin's `VITE_STOREFRONT_URL=http://localhost:5173`. Backend `NODE_ENV=development` permits the documented local origins.
 
 Start three terminals:
 
@@ -33,7 +33,7 @@ npm run dev --prefix ecommerce -- --port 5173
 npm run dev --prefix super-admin -- --port 5174
 ```
 
-Create a platform owner only after supplying `OWNER_USERNAME`, `OWNER_EMAIL`, `OWNER_PASSWORD` (12+ characters) and `MONGODB_URI` in a secure local environment. Run `node scripts/create-owner.mjs` from `backend`. The script refuses to overwrite an existing account. Create stores and assigned merchant administrators through the platform application.
+Create a platform owner only after supplying `OWNER_USERNAME`, `OWNER_EMAIL`, `OWNER_PASSWORD` (exactly six numeric digits) and `MONGODB_URI` in a secure local environment. Run `node scripts/create-owner.mjs` from `backend`. The script refuses to overwrite an existing account. Create stores and assigned merchant administrators through the platform application.
 
 R2 image uploads require the five `CLOUD_STORAGE_*` settings in `backend/.env.example`. Otherwise uploads return an error and the product editor still accepts HTTPS image URLs. Uploads accept at most six JPEG, PNG or WebP files, each up to 5 MB.
 
@@ -69,3 +69,5 @@ Frontend variables are embedded during the build. Use the supplied Azure `/api/v
 After the release blockers are resolved, deploy the backend first, verify readiness and authentication, then rebuild and deploy each frontend from its own directory. Do not deploy the test backend or QA accounts. The existing GitHub workflow runs verification before deploying the Azure API on a `main` push; it does not deploy Firebase sites.
 
 Keep `.env`, credentials, `node_modules`, generated `dist`, `.firebase` and test reports out of Git. Previously tracked credentials were removed from the current index, but their history remains: rotate the affected credentials before release.
+
+Firebase serves both frontends as static applications. They call the Azure backend directly through `VITE_API_URL`; no Firebase Functions, gateway, or proxy secrets are needed. Product metadata updates in the browser, but social crawlers that do not execute JavaScript will not receive product-specific previews. Existing owner passwords can be reset with `node scripts/reset-owner-password.mjs --apply` from `backend` after setting `OWNER_EMAIL` and the new `OWNER_PASSWORD` locally. No production passwords are changed automatically.

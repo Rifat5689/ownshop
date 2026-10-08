@@ -72,7 +72,7 @@ function StoreShell() {
           {store.supportEmail && (
             <a href={`mailto:${store.supportEmail}`}>Contact</a>
           )}
-          <Link to="/admin/login">Merchant Login</Link>
+          <Link to={`/${storeSlug}/admin`}>Merchant Login</Link>
         </div>
         <p>
           © {new Date().getFullYear()} {store.name} · Powered by OwnShop

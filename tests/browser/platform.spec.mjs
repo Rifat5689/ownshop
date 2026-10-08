@@ -2,11 +2,11 @@ import { test, expect } from "@playwright/test";
 const shop = "http://127.0.0.1:5273";
 const owner = "http://127.0.0.1:5274";
 async function login(page, platform = false) {
-  await page.goto(platform ? `${owner}/login` : `${shop}/admin/login`);
+  await page.goto(platform ? `${owner}/login` : `${shop}/shopvista/admin`);
   await page
     .getByLabel("Email or Username")
     .fill(platform ? "qa-owner" : "qa-admin");
-  await page.getByLabel("Password", { exact: true }).fill("QA-password-2026");
+  await page.getByLabel("Password", { exact: true }).fill("482913");
   await page.getByRole("button", { name: "Sign In", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Dashboard", exact: true }),
@@ -17,13 +17,14 @@ async function nav(page, to) {
     await page.getByRole("button", { name: "Open menu" }).click();
   await page.locator(`aside a[href="${to}"]`).click();
 }
-test("store directory, catalog, search, category, sorting and details work", async ({
+test("root is not found and catalog, search, category, sorting and details work", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(shop);
-  await page.getByRole("heading", { name: "ShopVista", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.goto(`${shop}/shopvista`);
   await page
     .getByRole("link", { name: "Shop Now", exact: false })
     .first()
@@ -43,6 +44,8 @@ test("store directory, catalog, search, category, sorting and details work", asy
     .getByRole("combobox", { name: "Sort by", exact: true })
     .selectOption("price-low");
   await page.getByRole("heading", { name: "Studio Headphones" }).click();
+  await expect(page).toHaveTitle("Studio Headphones | ShopVista");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Studio Headphones | ShopVista");
   await expect(
     page.getByRole("heading", { name: "Studio Headphones" }),
   ).toBeVisible();
@@ -133,7 +136,7 @@ test("merchant authentication, real dashboard and logout work", async ({
 }) => {
   await login(page);
   await expect(page.getByText("Total Products", { exact: true })).toBeVisible();
-  await nav(page, "/admin/settings");
+  await nav(page, "/shopvista/admin/settings");
   await expect(page.getByLabel("Store Name")).toHaveValue("ShopVista");
   await page.getByRole("button", { name: "Save Changes" }).click();
   await expect(page.getByText("Settings saved.")).toBeVisible();
@@ -143,14 +146,14 @@ test("merchant authentication, real dashboard and logout work", async ({
   await expect(
     page.getByRole("heading", { name: "Merchant Login" }),
   ).toBeVisible();
-  await page.goto(`${shop}/admin/orders`);
+  await page.goto(`${shop}/shopvista/admin/orders`);
   await expect(
     page.getByRole("heading", { name: "Merchant Login" }),
   ).toBeVisible();
 });
 test("merchant product create edit and delete work", async ({ page }) => {
   await login(page);
-  await page.goto(`${shop}/admin/products/create`);
+  await page.goto(`${shop}/shopvista/admin/products/create`);
   const name = `Browser Product ${Date.now()}`;
   await page.getByLabel("Product Name").fill(name);
   await page.getByLabel("Price (BDT)").fill("100");
@@ -168,7 +171,7 @@ test("merchant product create edit and delete work", async ({ page }) => {
 });
 test("category CRUD and customer details are functional", async ({ page }) => {
   await login(page);
-  await nav(page, "/admin/categories");
+  await nav(page, "/shopvista/admin/categories");
   const name = `QA Category ${Date.now()}`;
   await page.getByLabel("Category Name").fill(name);
   await page.getByRole("button", { name: "Create Category" }).click();
@@ -185,7 +188,7 @@ test("category CRUD and customer details are functional", async ({ page }) => {
   await expect(
     page.getByRole("cell", { name: `${name} Updated`, exact: true }),
   ).toHaveCount(0);
-  await nav(page, "/admin/customers");
+  await nav(page, "/shopvista/admin/customers");
   await page
     .getByRole("link", { name: "View Details", exact: false })
     .first()
@@ -232,7 +235,7 @@ test("owner creates an assigned admin, edits subscription and saves settings", a
     .selectOption({ label: "ShopVista" });
   await page
     .getByLabel("Password", { exact: true })
-    .fill("Browser-QA-password");
+    .fill("593024");
   await page.getByRole("button", { name: "Save Administrator" }).click();
   await expect(
     page.getByRole("link", { name: username, exact: true }),

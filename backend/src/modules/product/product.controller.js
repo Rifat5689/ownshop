@@ -90,7 +90,8 @@ const getStoreProducts = asyncHandler(async (req, res) =>
     new ApiResponse(
       200,
       await Product.find({ tenantId: req.store._id, isActive: true })
-        .populate("category")
+        .select("-images.public_id -totalViews -__v -createdAt -updatedAt")
+        .populate("category", "name slug")
         .sort({ createdAt: -1 })
         .limit(500),
       "Products fetched",
@@ -102,7 +103,7 @@ const getProductByslug = asyncHandler(async (req, res) => {
     tenantId: req.store._id,
     slug: req.params.slug,
     isActive: true,
-  }).populate("category");
+  }).select("-images.public_id -totalViews -__v -createdAt -updatedAt").populate("category", "name slug");
   if (!product) throw new ApiError(404, "Product not found");
   return res.json(new ApiResponse(200, product, "Product fetched"));
 });

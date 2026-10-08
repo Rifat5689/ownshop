@@ -1,8 +1,9 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useLogin } from "../../../features/auth/hooks/useLogin";
 export default function Login() {
-  const hook = useLogin(["ADMIN", "ECO"], "/admin/dashboard");
+  const { storeSlug } = useParams();
+  const hook = useLogin(["ADMIN", "ECO"], `/${storeSlug}/admin/dashboard`);
   return (
     <main className="auth-page">
       <form className="auth-card form-stack" onSubmit={hook.submit}>
@@ -40,7 +41,7 @@ export default function Login() {
         <button className="btn-primary" disabled={hook.pending}>
           {hook.pending ? "Signing In..." : "Sign In"}
         </button>
-        <Link to="/">Browse Stores</Link>
+        <Link to={`/${storeSlug}`}>View Store</Link>
       </form>
     </main>
   );

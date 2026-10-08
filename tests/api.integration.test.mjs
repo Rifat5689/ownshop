@@ -187,7 +187,7 @@ test("customers cannot perform store administration", async () => {
 test("authentication returns a usable token and no password", async () => {
   const result = await call("/users/auth/login", {
     method: "POST",
-    data: { username: "qa-owner", password: "QA-password-2026" },
+    data: { username: "qa-owner", password: "482913" },
   });
   assert.equal(result.status, 200);
   assert.ok(result.body.data.accessToken);
@@ -197,6 +197,25 @@ test("authentication returns a usable token and no password", async () => {
   });
   assert.equal(session.body.data.role, "SUPER_ADMIN");
 });
+test("merchant login requires the assigned active store and does not issue cookies for wrong stores", async () => {
+  for (const storeSlug of [undefined, "other-store", { malicious: true }]) {
+    const result = await call("/users/auth/login", { method: "POST", data: {username:"qa-admin",password:"482913",storeSlug} });
+    assert.ok([400,401].includes(result.status));
+    assert.equal(result.headers.getSetCookie().length,0);
+  }
+  const allowed = await call("/users/auth/login", { method:"POST", data:{username:"qa-admin",password:"482913",storeSlug:"shopvista"} });
+  assert.equal(allowed.status,200);
+  const denied = await call("/products", {user:qa.admin,headers:{"X-Store-Slug":"other-store"}});
+  assert.equal(denied.status,403);
+});
+
+test("admin creation rejects nonnumeric and incorrect-length passwords", async () => {
+  for (const password of ["12345","1234567","abcdef","12345a",123456]) {
+    const result=await call("/users/admins", {method:"POST",user:qa.owner,data:{username:"new-admin",email:"new-admin@example.test",tenantId:String(qa.store._id),password}});
+    assert.equal(result.status,400);
+  }
+});
+
 test("public catalog contains only the requested tenant", async () => {
   const result = await call("/products/store/shopvista");
   assert.equal(result.status, 200);
@@ -430,12 +449,12 @@ test("CORS origins are matched exactly", async () => {
 test("platform and store sessions use separate cookies, and bearer tokens take priority", async () => {
   const platform = await call("/users/auth/login", {
     method: "POST",
-    data: { username: "qa-owner", password: "QA-password-2026" },
+    data: { username: "qa-owner", password: "482913" },
     headers: { "X-App-Client": "super-admin" },
   });
   const merchant = await call("/users/auth/login", {
     method: "POST",
-    data: { username: "qa-admin", password: "QA-password-2026" },
+    data: { username: "qa-admin", password: "482913", storeSlug: "shopvista" },
     headers: { "X-App-Client": "store-admin" },
   });
   const platformCookies = platform.headers.getSetCookie();

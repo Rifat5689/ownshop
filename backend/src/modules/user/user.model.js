@@ -56,6 +56,8 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
+  if (["SUPER_ADMIN", "ADMIN", "ECO"].includes(this.role) && !/^\d{6}$/.test(this.password || ""))
+    throw new Error("Owner and admin passwords must contain exactly six digits");
   this.password = await bcrypt.hash(this.password, 10);
   return;
 });

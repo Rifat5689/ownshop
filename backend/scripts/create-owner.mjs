@@ -7,11 +7,11 @@ if (
   !OWNER_USERNAME ||
   !OWNER_EMAIL ||
   !OWNER_PASSWORD ||
-  OWNER_PASSWORD.length < 12 ||
+  !/^\d{6}$/.test(OWNER_PASSWORD) ||
   !MONGODB_URI
 )
   throw new Error(
-    "Set OWNER_USERNAME, OWNER_EMAIL, OWNER_PASSWORD (12+ characters) and MONGODB_URI locally before running this script.",
+    "Set OWNER_USERNAME, OWNER_EMAIL, OWNER_PASSWORD (exactly six digits) and MONGODB_URI locally before running this script.",
   );
 await mongoose.connect(MONGODB_URI, {
   autoIndex: false,

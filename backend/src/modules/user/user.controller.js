@@ -2,6 +2,7 @@ import ApiError from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import User from "./user.model.js";
+import Store from "../store/store.model.js";
 import {
   cookieOptions,
   generateAccessAndRefreshToken,
@@ -84,6 +85,19 @@ const logIn = asyncHandler(async (req, res) => {
   if (!user || !user.password || !(await user.isPasswordCorrect(password)))
     throw new ApiError(401, "Invalid credentials");
   if (user.isActive === false) throw new ApiError(403, "Account disabled");
+  if (["ADMIN", "ECO"].includes(user.role)) {
+    const { storeSlug } = req.body;
+    if (typeof storeSlug !== "string" || !storeSlug)
+      throw new ApiError(400, "Use your assigned store's admin login URL");
+    const store = await Store.findOne({
+      _id: user.tenantId,
+      slug: storeSlug,
+      status: "ACTIVE",
+    });
+    if (!store) throw new ApiError(401, "Invalid credentials");
+  } else if (req.body.storeSlug !== undefined) {
+    throw new ApiError(401, "Invalid credentials");
+  }
   const tokens = await generateAccessAndRefreshToken(user._id);
   const safeUser = user.toObject();
   delete safeUser.password;

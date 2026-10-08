@@ -85,27 +85,27 @@ export async function startQA(port = 0) {
     const owner = await User.create({
       username: "qa-owner",
       email: "owner@example.test",
-      password: "QA-password-2026",
+      password: "482913",
       role: "SUPER_ADMIN",
     });
     const admin = await User.create({
       username: "qa-admin",
       email: "admin@example.test",
-      password: "QA-password-2026",
+      password: "482913",
       role: "ADMIN",
       tenantId: store._id,
     });
     const otherAdmin = await User.create({
       username: "qa-other",
       email: "other@example.test",
-      password: "QA-password-2026",
+      password: "482913",
       role: "ADMIN",
       tenantId: otherStore._id,
     });
     const customer = await User.create({
       username: "qa-customer",
       email: "customer@example.test",
-      password: "QA-password-2026",
+      password: "482913",
       role: "user",
     });
     server = await new Promise((resolve, reject) => {

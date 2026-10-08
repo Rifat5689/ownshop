@@ -27,11 +27,11 @@ const createAdmin = asyncHandler(async (req, res) => {
     !username ||
     !email ||
     typeof password !== "string" ||
-    password.length < 8
+    !/^\d{6}$/.test(password)
   )
     throw new ApiError(
       400,
-      "Name, email, and a password of at least eight characters are required",
+      "Name, email, and a password of exactly six digits are required",
     );
   if (!["ADMIN", "ECO"].includes(role))
     throw new ApiError(400, "Invalid store role");
@@ -53,7 +53,13 @@ const updateAdmin = asyncHandler(async (req, res) => {
   if (!user) throw new ApiError(404, "Administrator not found");
   if (user.role === "SUPER_ADMIN")
     throw new ApiError(403, "Platform owner cannot be modified here");
-  const { username, email, tenantId, role, isActive } = req.body;
+  const { username, email, tenantId, role, isActive, password } = req.body;
+  if (password !== undefined && password !== "") {
+    if (typeof password !== "string" || !/^\d{6}$/.test(password))
+      throw new ApiError(400, "Password must contain exactly six digits");
+    user.password = password;
+    user.refreshToken = null;
+  }
   if (tenantId && !(await Store.findById(tenantId)))
     throw new ApiError(400, "Invalid store");
   if (role && !["ADMIN", "ECO"].includes(role))

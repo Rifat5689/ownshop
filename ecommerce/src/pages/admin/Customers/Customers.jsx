@@ -5,7 +5,7 @@ import { QueryState, money } from "../../../components/common/QueryState";
 import { Pagination } from "../../../components/common/Pagination";
 export default function Customers() {
   const hook = useManagementPage("customers", "/orders/customers");
-  const { id } = useParams();
+  const { id, storeSlug } = useParams();
   const customer = hook.query.data?.find((item) => item._id === id);
   return (
     <>
@@ -19,7 +19,7 @@ export default function Customers() {
         {id ? (
           customer ? (
             <section className="card form-stack">
-              <Link to="/admin/customers">← Back to Customers</Link>
+              <Link to={`/${storeSlug}/admin/customers`}>← Back to Customers</Link>
               <h2>{customer.name}</h2>
               <p>Phone: {customer._id}</p>
               <p>{customer.address}</p>
@@ -62,7 +62,7 @@ export default function Customers() {
                       <td>{money(item.total)}</td>
                       <td>
                         <Link
-                          to={`/admin/customers/${encodeURIComponent(item._id)}`}
+                          to={`/${storeSlug}/admin/customers/${encodeURIComponent(item._id)}`}
                         >
                           View Details →
                         </Link>

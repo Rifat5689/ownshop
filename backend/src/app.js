@@ -12,9 +12,11 @@ import ApiError from "./utils/ApiError.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
 import { platformRouter } from "./modules/platform/platform.routes.js";
 import mongoose from "mongoose";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { createHash } from "node:crypto";
 const app = express();
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 app.use(helmet());
 const allowedOrigins = [
@@ -59,6 +61,7 @@ app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
+const clientKey = (req) => ipKeyGenerator(req.ip);
 const limitResponse = (req, res) =>
   res.status(429).json({
     success: false,
@@ -67,10 +70,40 @@ const limitResponse = (req, res) =>
     errors: [],
   });
 app.use(
+  "/api/v1/users/auth/login",
+  rateLimit({
+    windowMs: 15 * 60000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    keyGenerator: clientKey,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: limitResponse,
+  }),
+);
+app.use(
   "/api/v1/users/auth",
   rateLimit({
     windowMs: 15 * 60000,
     limit: 60,
+    keyGenerator: clientKey,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: limitResponse,
+  }),
+);
+app.use(
+  "/api/v1/users/auth/login",
+  rateLimit({
+    windowMs: 15 * 60000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => {
+      const identifier = req.body?.email || req.body?.username;
+      return typeof identifier === "string"
+        ? `account:${createHash("sha256").update(identifier.trim().toLowerCase()).digest("hex")}`
+        : clientKey(req);
+    },
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: limitResponse,
@@ -81,6 +114,7 @@ app.use(
   rateLimit({
     windowMs: 60000,
     limit: 30,
+    keyGenerator: clientKey,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: limitResponse,
@@ -137,7 +171,7 @@ app.use((err, req, res, _next) => {
     success: false,
     statusCode,
     message,
-    errors: err.errors || [],
+    errors: statusCode >= 500 ? [] : err.errors || [],
   });
 });
 

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { errorMessage } from "../../../services/api";
 export function useLogin(roles, destination) {
   const { login, logout } = useAuth();
+  const { storeSlug } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
@@ -13,7 +14,7 @@ export function useLogin(roles, destination) {
     setPending(true);
     setError("");
     try {
-      const user = await login(form);
+      const user = await login({ ...form, storeSlug });
       if (!roles.includes(user.role)) {
         await logout();
         throw new Error(

@@ -66,13 +66,16 @@ export function AdminEditor({ admin, hook }) {
           ))}
         </select>
       </label>
-      {!admin && (
+      {(
         <label>
-          Password
+          {admin ? "New Password (leave blank to keep current)" : "Password"}
           <input
-            required
+            required={!admin}
             type="password"
-            minLength="8"
+            minLength={6}
+            maxLength={6}
+            pattern="[0-9]{6}"
+            inputMode="numeric"
             autoComplete="new-password"
             value={form.password}
             onChange={(event) => change("password", event.target.value)}

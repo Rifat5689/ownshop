@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../app/providers/AuthProvider";
 import { errorMessage } from "../services/api";
-const links = [
-  ["Dashboard", "/admin/dashboard", "▧"],
-  ["Products", "/admin/products", "◇"],
-  ["Categories", "/admin/categories", "▦"],
-  ["Orders", "/admin/orders", "▤"],
-  ["Customers", "/admin/customers", "♙"],
-  ["Store Settings", "/admin/settings", "⚙"],
+const navigation = [
+  ["Dashboard", "dashboard", "▧"],
+  ["Products", "products", "◇"],
+  ["Categories", "categories", "▦"],
+  ["Orders", "orders", "▤"],
+  ["Customers", "customers", "♙"],
+  ["Store Settings", "settings", "⚙"],
 ];
 export function AdminLayout() {
+  const { storeSlug } = useParams();
+  const base = `/${storeSlug}/admin`;
+  const links = navigation.map(([label, path, icon]) => [label, `${base}/${path}`, icon]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -27,7 +30,7 @@ export function AdminLayout() {
     setSigningOut(true);
     try {
       await logout();
-      navigate("/admin/login");
+      navigate(`${base}/login`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {

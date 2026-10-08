@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useDashboard } from "../hooks/useDashboard";
 import { QueryState, money } from "../../../components/common/QueryState";
 function RevenueChart({ daily = [] }) {
@@ -117,6 +117,7 @@ function StoreStatus({ data }) {
   );
 }
 export function DashboardView({ platform = false }) {
+  const { storeSlug } = useParams();
   const [days, setDays] = useState("30");
   const query = useDashboard(days);
   const data = query.data || {};
@@ -245,9 +246,9 @@ export function DashboardView({ platform = false }) {
             <section className="card">
               <h2>Quick Actions</h2>
               <div className="quick-actions">
-                <Link to="/admin/products/create">+ Add Product</Link>
-                <Link to="/admin/orders">Manage Orders</Link>
-                <Link to="/admin/settings">Settings</Link>
+                <Link to={`/${storeSlug}/admin/products/create`}>+ Add Product</Link>
+                <Link to={`/${storeSlug}/admin/orders`}>Manage Orders</Link>
+                <Link to={`/${storeSlug}/admin/settings`}>Settings</Link>
               </div>
             </section>
           )}
@@ -305,7 +306,7 @@ export function DashboardView({ platform = false }) {
                       {platform ? (
                         order._id.slice(-8)
                       ) : (
-                        <Link to={`/admin/orders/${order._id}`}>
+                        <Link to={`/${storeSlug}/admin/orders/${order._id}`}>
                           {order._id.slice(-8)}
                         </Link>
                       )}

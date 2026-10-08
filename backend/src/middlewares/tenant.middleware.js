@@ -26,6 +26,9 @@ const requireTenant = asyncHandler(async (req, res, next) => {
   const store = await Store.findById(tenantId);
   if (!store || (req.user.role !== "SUPER_ADMIN" && store.status !== "ACTIVE"))
     throw new ApiError(403, "Store unavailable");
+  const requestedSlug = req.get("X-Store-Slug");
+  if (requestedSlug && req.user.role !== "SUPER_ADMIN" && requestedSlug !== store.slug)
+    throw new ApiError(403, "Permission denied");
   req.store = store;
   next();
 });

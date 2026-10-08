@@ -32,7 +32,15 @@ const getPublicStores = asyncHandler(async (req, res) =>
   ),
 );
 const getStore = asyncHandler(async (req, res) =>
-  res.json(new ApiResponse(200, req.store, "Store fetched")),
+  res.json(new ApiResponse(200, req.user ? req.store : {
+    _id: req.store._id,
+    name: req.store.name,
+    slug: req.store.slug,
+    description: req.store.description,
+    shippingFee: req.store.shippingFee,
+    supportEmail: req.store.supportEmail,
+    status: req.store.status,
+  }, "Store fetched")),
 );
 const updateStore = asyncHandler(async (req, res) => {
   const fields =

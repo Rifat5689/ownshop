@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useParams } from "react-router-dom";
 import { AdminLayout } from "../../layouts/AdminLayout";
 import { ProtectedRoute } from "../../components/common/ProtectedRoute";
 import Dashboard from "../../pages/admin/Dashboard";
@@ -9,13 +9,22 @@ import Categories from "../../pages/admin/Categories/Categories";
 import Orders from "../../pages/admin/Orders/Orders";
 import Customers from "../../pages/admin/Customers/Customers";
 import { SettingsView } from "../../features/settings/components/SettingsView";
+import { useStore } from "../providers/StoreProvider";
+import { PageMetadata } from "../../components/common/PageMetadata";
 export default function AdminRoutes() {
+  const { storeSlug } = useParams();
+  const base = `/${storeSlug}/admin`;
+  const { query } = useStore();
+  if (query.isPending) return <div className="state-card" role="status">Loading store...</div>;
+  if (query.isError || !query.data) return <div className="state-card"><h1>Page not found</h1></div>;
   return (
+    <>
+    <PageMetadata title="Merchant Login | Store Admin" noindex />
     <Routes>
       <Route path="login" element={<Login />} />
       <Route
         element={
-          <ProtectedRoute roles={["ADMIN", "ECO"]} loginPath="/admin/login" />
+          <ProtectedRoute roles={["ADMIN", "ECO"]} loginPath={`${base}/login`} />
         }
       >
         <Route element={<AdminLayout />}>
@@ -39,10 +48,11 @@ export default function AdminRoutes() {
         element={
           <div className="state-card">
             <h1>Page not found</h1>
-            <Link to="/admin/dashboard">Dashboard</Link>
+            <Link to={`${base}/dashboard`}>Dashboard</Link>
           </div>
         }
       />
     </Routes>
+    </>
   );
 }

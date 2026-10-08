@@ -9,14 +9,14 @@ import { QueryState, money } from "../../../components/common/QueryState";
 import { Pagination } from "../../../components/common/Pagination";
 import { errorMessage } from "../../../services/api";
 export default function Orders() {
-  const { id } = useParams();
+  const { id, storeSlug } = useParams();
   const hook = useOrdersPage(id);
   const client = useQueryClient();
   const order = hook.details.data;
   if (id)
     return (
       <>
-        <Link to="/admin/orders">← Back to Orders</Link>
+        <Link to={`/${storeSlug}/admin/orders`}>← Back to Orders</Link>
         <h1>Order #{id.slice(-8)}</h1>
         <QueryState query={hook.details}>
           {order && (
@@ -138,7 +138,7 @@ export default function Orders() {
                   </td>
                   <td>{new Date(item.createdAt).toLocaleDateString()}</td>
                   <td>
-                    <Link to={`/admin/orders/${item._id}`}>View Details →</Link>
+                    <Link to={`/${storeSlug}/admin/orders/${item._id}`}>View Details →</Link>
                   </td>
                 </tr>
               ))}

@@ -7,9 +7,10 @@ import { useCart } from "../../../features/cart/CartProvider";
 import { priceOf } from "../../../features/cart/utils/cartStorage";
 import { ProductImage } from "../../../features/store/components/ProductCard";
 import { QueryState, money } from "../../../components/common/QueryState";
+import { PageMetadata } from "../../../components/common/PageMetadata";
 export default function ProductDetails() {
   const { productSlug } = useParams();
-  const { storeSlug } = useStore();
+  const { storeSlug, store } = useStore();
   const { add, toggleWishlist, wishlist } = useCart();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
@@ -22,6 +23,7 @@ export default function ProductDetails() {
   const product = query.data;
   return (
     <div className="shop-container">
+      <PageMetadata title={product ? `${product.title || product.name} | ${store?.name || storeSlug}` : undefined} description={String(product?.shortDescription || product?.description || "").slice(0, 200)} image={product?.images?.[0]?.url} />
       <p className="breadcrumb">
         <Link to={`/${storeSlug}/products`}>Products</Link> / {product?.name}
       </p>

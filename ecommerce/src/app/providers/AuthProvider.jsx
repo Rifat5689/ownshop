@@ -14,6 +14,10 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("ownshop:unauthorized", reset);
   }, []);
   useEffect(() => {
+    if (!sessionStorage.getItem("ownshop_access") && !localStorage.getItem("ownshop_session")) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     authService
       .me()

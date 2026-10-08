@@ -1,8 +1,6 @@
 import axios from "axios";
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "https://myshop-bhh4bggcgkd9e6hq.centralindia-01.azurewebsites.net/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "https://myshop-bhh4bggcgkd9e6hq.centralindia-01.azurewebsites.net/api/v1",
   withCredentials: true,
   headers: { "X-App-Client": "super-admin" },
   timeout: 20000,

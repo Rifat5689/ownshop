@@ -1,13 +1,13 @@
 import axios from "axios";
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "https://myshop-bhh4bggcgkd9e6hq.centralindia-01.azurewebsites.net/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "https://myshop-bhh4bggcgkd9e6hq.centralindia-01.azurewebsites.net/api/v1",
   withCredentials: true,
   headers: { "X-App-Client": "store-admin" },
   timeout: 20000,
 });
 api.interceptors.request.use((config) => {
+  const [, storeSlug, section] = window.location.pathname.split("/");
+  if (storeSlug && section === "admin") config.headers["X-Store-Slug"] = decodeURIComponent(storeSlug);
   const token = sessionStorage.getItem("ownshop_access");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
