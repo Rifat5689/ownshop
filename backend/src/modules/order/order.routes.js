@@ -9,4 +9,4 @@ orderRouter.route("/all/:status").get(verifyJwt, getAllOrders);
 orderRouter.route("/dashboard/summary").get(verifyJwt, getDashboardsummary);
 orderRouter.route("/dashboard/analytics").post(verifyJwt, getDashboardAnalytics);
 
-export default orderRouter;
+export { orderRouter };

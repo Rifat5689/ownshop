@@ -187,9 +187,7 @@ const getDashboardAnalytics = asyncHandler(async (req,res)=>{
      }
      
      else {
-        return res.status(400).json(
-            new ApiResponse(400 , null , "Invalid range. Use 'weekly' or 'monthly'")
-          )
+        throw new ApiError(400, "Invalid range. Use 'weekly' or 'monthly'");
      }
 
 })

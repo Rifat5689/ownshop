@@ -4,7 +4,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import User from "./user.model.js";
 import jwt from "jsonwebtoken"; 
-import { cookieOptions, generateAccessAndRefreshToken } from "./user.utils.js";
+import { cookieOptions, generateAccessAndRefreshToken, verifyRefreshToken } from "./user.utils.js";
 
 
 const register = asyncHandler(async (req, res) => {
@@ -43,11 +43,12 @@ const register = asyncHandler(async (req, res) => {
 
 const logIn = asyncHandler(async (req,res) => {
 
-   const {email  , password} = req.body ; 
+   const {email, username, password} = req.body ; 
+   const identifier = email || username;
 
-   if(!email) throw new ApiError(400, "email required") ; 
+   if(!identifier) throw new ApiError(400, "email or username required") ; 
    if(!password) throw new ApiError (400 , "password required") ; 
-   let user =await  User.findOne({email});
+   let user = await User.findOne({$or: [{email: identifier}, {username: identifier}]});
     if(!user) throw new ApiError(404 , "User not found ") ; 
 
    const isMatch =await  user.isPasswordCorrect(password) ; 
@@ -94,13 +95,7 @@ const refreshToken = asyncHandler(async(req,res) =>{
    const token = req.cookies?.refreshToken || 
               req.headers["authorization"]?.replace("Bearer ", "");
 
-              let decodedToken ; 
-  try {
-   decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-} catch (err) {
-  if (err.name === "TokenExpiredError") throw new ApiError(401, "Token expired");
-  throw new ApiError(401, "Invalid token");
-}
+   const decodedToken = verifyRefreshToken(token);
    const {_id} = decodedToken  ; 
    const user =await  User.findById(_id) ; 
 

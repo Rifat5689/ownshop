@@ -12,4 +12,4 @@ productRouter.route('/').post(createProduct).get(getAllPrdoucts) ;
 productRouter.route('/:id').get(getProductById).patch(updateProduct).delete(deleteProduct); 
 
 
-export default productRouter ; 
+export { productRouter } ;

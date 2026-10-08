@@ -3,11 +3,11 @@ import { logIn, logOut, refreshToken, register } from "./user.controller.js";
 import { verifyJwt } from "../../middlewares/auth.middleware.js";
 
 
-const router = Router() ; 
+const userRouter = Router() ; 
 
-router.route("/auth/register").post(register)  ; 
-router.route('/auth/login').post(logIn) ; 
-router.route("/auth/logout").post(verifyJwt,logOut) ;
-router.route("/auth/refreshtoken").post(refreshToken) ; 
+userRouter.route("/auth/register").post(register)  ; 
+userRouter.route('/auth/login').post(logIn) ; 
+userRouter.route("/auth/logout").post(verifyJwt,logOut) ;
+userRouter.route("/auth/refreshtoken").post(refreshToken) ; 
 
-export {router} ; 
+export {userRouter} ; 

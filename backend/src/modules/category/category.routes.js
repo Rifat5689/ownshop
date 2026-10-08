@@ -11,4 +11,4 @@ const categoryRouter= Router() ;
 categoryRouter.route("/").post(createCategory) ; 
 categoryRouter.route("/:id").get(categoryById) ; 
 
-export default categoryRouter ; 
+export { categoryRouter } ; 

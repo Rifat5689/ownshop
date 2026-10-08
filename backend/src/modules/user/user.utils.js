@@ -18,4 +18,15 @@ const user = await User.findById(id)  ;
   secure: true
 };
 
-export {generateAccessAndRefreshToken,cookieOptions} ; 
+import jwt from "jsonwebtoken";
+
+const verifyRefreshToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+  } catch (err) {
+    if (err.name === "TokenExpiredError") throw new ApiError(401, "Token expired");
+    throw new ApiError(401, "Invalid token");
+  }
+};
+
+export {generateAccessAndRefreshToken, cookieOptions, verifyRefreshToken} ;
