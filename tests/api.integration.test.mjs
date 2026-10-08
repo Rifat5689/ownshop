@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { startQA } from "./qa-fixtures.mjs";
 import Product from "../backend/src/modules/product/product.model.js";
 import User from "../backend/src/modules/user/user.model.js";
+import mongoose from "../backend/node_modules/mongoose/index.js";
+import { migrateTenants } from "../backend/scripts/migrate-tenants.mjs";
 let qa;
 before(
   async () => {
@@ -37,6 +39,91 @@ const shippingDetails = {
   phone: "01712345678",
   address: "QA Street, Dhaka",
 };
+test("tenant migration previews without writes, rejects unsafe mappings and applies idempotently", async () => {
+  const connection = mongoose.connection;
+  const categoryId = new mongoose.Types.ObjectId();
+  const productId = new mongoose.Types.ObjectId();
+  const userId = new mongoose.Types.ObjectId();
+  await connection
+    .collection("categories")
+    .insertOne({ _id: categoryId, name: "Legacy", slug: "migration-legacy" });
+  await connection
+    .collection("products")
+    .insertOne({
+      _id: productId,
+      name: "Legacy",
+      slug: "migration-legacy-product",
+      category: categoryId,
+    });
+  await connection
+    .collection("users")
+    .insertOne({
+      _id: userId,
+      username: "migration-legacy",
+      email: "migration@example.test",
+      role: "admin",
+      refreshToken: "old-session",
+    });
+  const plan = {
+    assignments: [
+      {
+        collection: "categories",
+        id: String(categoryId),
+        tenantId: String(qa.store._id),
+      },
+      {
+        collection: "products",
+        id: String(productId),
+        tenantId: String(qa.store._id),
+      },
+      {
+        collection: "users",
+        id: String(userId),
+        tenantId: String(qa.store._id),
+      },
+    ],
+  };
+  try {
+    assert.equal((await migrateTenants(connection, plan)).assigned, 3);
+    assert.equal(
+      (await connection.collection("products").findOne({ _id: productId }))
+        .tenantId,
+      undefined,
+    );
+    const unsafe = structuredClone(plan);
+    unsafe.assignments[1].tenantId = String(qa.otherStore._id);
+    await assert.rejects(
+      migrateTenants(connection, unsafe, { apply: true }),
+      /cross-tenant/,
+    );
+    assert.equal(
+      (await connection.collection("categories").findOne({ _id: categoryId }))
+        .tenantId,
+      undefined,
+    );
+    assert.equal(
+      (await migrateTenants(connection, plan, { apply: true })).assigned,
+      3,
+    );
+    const migratedUser = await connection
+      .collection("users")
+      .findOne({ _id: userId });
+    assert.equal(migratedUser.role, "ADMIN");
+    assert.equal(migratedUser.refreshToken, null);
+    assert.equal(
+      (await migrateTenants(connection, plan, { apply: true })).unchanged,
+      3,
+    );
+    await assert.rejects(
+      migrateTenants(connection, unsafe, { apply: true }),
+      /reassign/,
+    );
+  } finally {
+    await connection.collection("products").deleteOne({ _id: productId });
+    await connection.collection("categories").deleteOne({ _id: categoryId });
+    await connection.collection("users").deleteOne({ _id: userId });
+  }
+});
 test("backend boots and returns readiness", async () => {
   assert.equal((await call("/health")).status, 200);
 });

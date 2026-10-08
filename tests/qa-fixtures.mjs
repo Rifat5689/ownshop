@@ -21,89 +21,118 @@ export async function startQA(port = 0) {
     replSet: { count: 1 },
     binary: { version: "7.0.14" },
   });
-  await mongoose.connect(database.getUri());
-  await Promise.all([
-    Order.init(),
-    Product.init(),
-    Store.init(),
-    User.init(),
-    Category.init(),
-  ]);
-  const [store, otherStore] = await Store.create([
-    {
-      name: "ShopVista",
-      slug: "shopvista",
-      description: "Discover quality products for everyday living.",
-      shippingFee: 60,
-      supportEmail: "qa@example.test",
-    },
-    { name: "Other Store", slug: "other-store" },
-  ]);
-  const category = await Category.create({
-    name: "Electronics",
-    slug: "electronics",
-    tenantId: store._id,
-  });
-  const product = await Product.create({
-    name: "Studio Headphones",
-    slug: "studio-headphones",
-    price: 2500,
-    stock: 20,
-    discount: 10,
-    tenantId: store._id,
-    category: category._id,
-    description: "Comfortable over-ear headphones with clear sound.",
-  });
-  const otherProduct = await Product.create({
-    name: "Other Store Product",
-    slug: "other-product",
-    price: 500,
-    stock: 5,
-    tenantId: otherStore._id,
-  });
-  const owner = await User.create({
-    username: "qa-owner",
-    email: "owner@example.test",
-    password: "QA-password-2026",
-    role: "SUPER_ADMIN",
-  });
-  const admin = await User.create({
-    username: "qa-admin",
-    email: "admin@example.test",
-    password: "QA-password-2026",
-    role: "ADMIN",
-    tenantId: store._id,
-  });
-  const otherAdmin = await User.create({
-    username: "qa-other",
-    email: "other@example.test",
-    password: "QA-password-2026",
-    role: "ADMIN",
-    tenantId: otherStore._id,
-  });
-  const customer = await User.create({
-    username: "qa-customer",
-    email: "customer@example.test",
-    password: "QA-password-2026",
-    role: "user",
-  });
-  const server = await new Promise((resolve) => {
-    const instance = app.listen(port, "127.0.0.1", () => resolve(instance));
-  });
-  return {
-    base: `http://127.0.0.1:${server.address().port}/api/v1`,
-    store,
-    otherStore,
-    product,
-    otherProduct,
-    owner,
-    admin,
-    otherAdmin,
-    customer,
-    stop: async () => {
-      await new Promise((resolve) => server.close(resolve));
-      await mongoose.disconnect();
-      await database.stop();
-    },
+  let server;
+  let stopped = false;
+  const stop = async () => {
+    if (stopped) return;
+    stopped = true;
+    try {
+      if (server) {
+        await new Promise((resolve, reject) => {
+          server.close((error) => (error ? reject(error) : resolve()));
+          server.closeIdleConnections();
+        });
+      }
+    } finally {
+      try {
+        await mongoose.disconnect();
+      } finally {
+        await database.stop();
+      }
+    }
   };
+  try {
+    await mongoose.connect(database.getUri());
+    await Promise.all([
+      Order.init(),
+      Product.init(),
+      Store.init(),
+      User.init(),
+      Category.init(),
+    ]);
+    const [store, otherStore] = await Store.create([
+      {
+        name: "ShopVista",
+        slug: "shopvista",
+        description: "Discover quality products for everyday living.",
+        shippingFee: 60,
+        supportEmail: "qa@example.test",
+      },
+      { name: "Other Store", slug: "other-store" },
+    ]);
+    const category = await Category.create({
+      name: "Electronics",
+      slug: "electronics",
+      tenantId: store._id,
+    });
+    const product = await Product.create({
+      name: "Studio Headphones",
+      slug: "studio-headphones",
+      price: 2500,
+      stock: 20,
+      discount: 10,
+      tenantId: store._id,
+      category: category._id,
+      description: "Comfortable over-ear headphones with clear sound.",
+    });
+    const otherProduct = await Product.create({
+      name: "Other Store Product",
+      slug: "other-product",
+      price: 500,
+      stock: 5,
+      tenantId: otherStore._id,
+    });
+    const owner = await User.create({
+      username: "qa-owner",
+      email: "owner@example.test",
+      password: "QA-password-2026",
+      role: "SUPER_ADMIN",
+    });
+    const admin = await User.create({
+      username: "qa-admin",
+      email: "admin@example.test",
+      password: "QA-password-2026",
+      role: "ADMIN",
+      tenantId: store._id,
+    });
+    const otherAdmin = await User.create({
+      username: "qa-other",
+      email: "other@example.test",
+      password: "QA-password-2026",
+      role: "ADMIN",
+      tenantId: otherStore._id,
+    });
+    const customer = await User.create({
+      username: "qa-customer",
+      email: "customer@example.test",
+      password: "QA-password-2026",
+      role: "user",
+    });
+    server = await new Promise((resolve, reject) => {
+      const instance = app.listen(port, "127.0.0.1", (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        instance.removeListener("error", reject);
+        resolve(instance);
+      });
+      instance.once("error", reject);
+    });
+    return {
+      base: `http://127.0.0.1:${server.address().port}/api/v1`,
+      store,
+      otherStore,
+      product,
+      otherProduct,
+      owner,
+      admin,
+      otherAdmin,
+      customer,
+      stop,
+    };
+  } catch (error) {
+    await stop();
+    throw error;
+  }
 }

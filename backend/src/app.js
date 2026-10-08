@@ -100,6 +100,11 @@ app.get("/api/v1/health", (req, res) => {
 });
 
 // Routes declaration
+app.use("/api/v1", (req, res, next) => {
+  if (mongoose.connection.readyState !== 1)
+    return next(new ApiError(503, "Database unavailable"));
+  return next();
+});
 app.use("/api/v1/stores", storeRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/users", userRouter);

@@ -100,14 +100,15 @@ export function AdminLayout() {
             <span className="muted">Your Store</span>
           </div>
           <div className="row">
-            user?.store?.slug &&{" "}
-            <Link
-              className="btn-primary"
-              to={`/${user.store.slug}`}
-              target="_blank"
-            >
-              View Storefront ↗
-            </Link>
+            {user?.store?.slug && (
+              <Link
+                className="btn-primary"
+                to={`/${user.store.slug}`}
+                target="_blank"
+              >
+                View Storefront ↗
+              </Link>
+            )}
             <span className="profile-circle">
               {user?.username?.[0]?.toUpperCase()}
             </span>

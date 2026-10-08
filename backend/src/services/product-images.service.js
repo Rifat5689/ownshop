@@ -25,9 +25,25 @@ export async function uploadProductImage(file, tenantId) {
   ];
   if (required.some((key) => !process.env[key]))
     throw new ApiError(503, "Image storage is not configured");
-  const publicBase = new URL(process.env.CLOUD_STORAGE_PUBLIC_URL);
-  if (publicBase.protocol !== "https:")
-    throw new ApiError(503, "Image storage requires an HTTPS public URL");
+  let publicBase;
+  try {
+    publicBase = new URL(process.env.CLOUD_STORAGE_PUBLIC_URL);
+  } catch {
+    throw new ApiError(503, "Image storage requires a valid HTTPS public URL");
+  }
+  if (
+    publicBase.protocol !== "https:" ||
+    publicBase.username ||
+    publicBase.password ||
+    publicBase.search ||
+    publicBase.hash
+  )
+    throw new ApiError(
+      503,
+      "Image storage requires an HTTPS public URL without credentials, query or fragment",
+    );
+  if (!/^[a-f\d]{32}$/i.test(process.env.CLOUD_STORAGE_ACCOUNT_ID))
+    throw new ApiError(503, "Image storage account ID is invalid");
   const extension = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -35,6 +51,8 @@ export async function uploadProductImage(file, tenantId) {
   }[file.mimetype];
   const key = `stores/${tenantId}/products/${randomUUID()}.${extension}`;
   const client = new S3Client({
+    maxAttempts: 2,
+    requestHandler: { connectionTimeout: 5000, requestTimeout: 15000 },
     region: "auto",
     endpoint: `https://${process.env.CLOUD_STORAGE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
@@ -42,14 +60,24 @@ export async function uploadProductImage(file, tenantId) {
       secretAccessKey: process.env.CLOUD_STORAGE_SECRET_KEY,
     },
   });
-  await client.send(
-    new PutObjectCommand({
-      Bucket: process.env.CLOUD_STORAGE_BUCKET,
-      Key: key,
-      Body: bytes,
-      ContentType: file.mimetype,
-    }),
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: process.env.CLOUD_STORAGE_BUCKET,
+        Key: key,
+        Body: bytes,
+        ContentType: file.mimetype,
+      }),
+      { abortSignal: AbortSignal.timeout(20000) },
+    );
+  } catch {
+    throw new ApiError(
+      503,
+      "Image storage is unavailable. Please try again later.",
+    );
+  } finally {
+    client.destroy();
+  }
   return {
     url: `${publicBase.href.replace(/\/$/, "")}/${key}`,
     public_id: key,

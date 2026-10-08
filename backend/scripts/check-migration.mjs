@@ -1,6 +1,10 @@
 import "dotenv/config";
 import mongoose from "mongoose";
-await mongoose.connect(process.env.MONGODB_URI);
+if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is required");
+await mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 10000,
+  autoIndex: false,
+});
 try {
   for (const collection of ["products", "categories", "orders"]) {
     const count = await mongoose.connection

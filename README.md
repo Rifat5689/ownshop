@@ -37,6 +37,8 @@ Create a platform owner only after supplying `OWNER_USERNAME`, `OWNER_EMAIL`, `O
 
 R2 image uploads require the five `CLOUD_STORAGE_*` settings in `backend/.env.example`. Otherwise uploads return an error and the product editor still accepts HTTPS image URLs. Uploads accept at most six JPEG, PNG or WebP files, each up to 5 MB.
 
+The public image base URL must use HTTPS with no credentials, query or fragment; the R2 account ID must be the actual 32-character account identifier. Provider requests have a 20-second overall deadline and return 503 on failure. Cloud configuration and real upload verification remain separate release requirements.
+
 ## Verification
 
 ```powershell
@@ -57,6 +59,10 @@ The HTML browser report is generated in `playwright-report/`; machine-readable r
 ## Production configuration
 
 Backend requires `MONGODB_URI`, distinct random `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_SECRET` of at least 32 characters, `NODE_ENV=production`, and Azure's provided `PORT`. Recommended token durations are 15 minutes / 7 days. Configure exact frontend origins through `CORS_ORIGIN`; the two Firebase hosting domains and their `firebaseapp.com` counterparts are included. Health endpoint: `/api/v1/health`.
+
+The HTTP port opens before database readiness; health and API routes return 503 until MongoDB connects. Initial database selection is bounded to 10 seconds and failed startup exits with code 1, without printing connection credentials. Configure Azure Health Check to `/api/v1/health`, confirm the App Service runtime supports the project's Node version, and use `npm start` from the deployed backend root. These changes do not diagnose or repair Azure networking or App Service configuration automatically. See [Microsoft's Node configuration guide](https://learn.microsoft.com/en-us/azure/app-service/configure-language-nodejs).
+
+Production startup does not automatically create database indexes. Review and explicitly provision the model indexes before release. For legacy tenant assignments, follow [the migration procedure](backend/scripts/TENANT_MIGRATION.md); its CLI defaults to a read-only dry run and requires an explicit mapping, reviewed plan hash and backup acknowledgement for transactional writes.
 
 Frontend variables are embedded during the build. Use the supplied Azure `/api/v1` base URL and the ecommerce hosting URL from `.env.example` for release builds. Both Firebase configurations serve their own `dist/` directory and rewrite deep links to `index.html`.
 

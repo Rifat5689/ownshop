@@ -4,6 +4,17 @@
 
 **Not ready for a public production launch yet.** The original project had major implementation and security gaps. The working tree now contains a functional, tested cash-on-delivery MVP, but that does not establish that every screen or feature in the design images is implemented or that the deployed websites work end to end.
 
+### Follow-up on the prioritized release work
+
+- The Azure health endpoint again timed out after 20 seconds with no response. Azure CLI is unavailable in the current environment; authenticated App Service configuration and logs have not been inspected. No deployment was performed.
+- Startup now opens the HTTP port promptly, returns 503 until database readiness, limits initial database selection to 10 seconds and shuts down without logging connection errors that could contain credentials. The deployment workflow now fails its verification step if the live health endpoint remains unavailable after deployment.
+- The existing API suite initially passed, so a spontaneous MongoDB crash was not reproduced. QA startup cleanup was hardened; a targeted port-conflict test caught and verified a fix for Express 5 listen callback errors. The existing 0.25 GB WiredTiger cache limit was preserved.
+- An explicit tenant mapping tool was added with a dry-run default, transactional apply, cross-tenant/reference validation, category slug conflict checks, existing-tenant protection, idempotent reruns and migrated administrator session revocation. Apply requires an acknowledged backup and the reviewed plan hash. No production records were audited or migrated. Legacy order schema conversion and index provisioning still need review.
+- R2 requests now have an overall deadline and controlled 503 errors; invalid public URLs/account identifiers are rejected. Cloud settings and a real public image upload remain unverified. Mocked storage tests do not establish cloud readiness.
+- Local follow-up validation passed: 21 Node tests, 22 desktop/mobile browser checks, backend and both frontend lint, both frontend production builds, and all three application dependency audits (zero reported vulnerabilities). These checks use isolated QA data and do not establish production readiness.
+
+**Do not deploy for public launch yet.** Restore authenticated Azure access, confirm/rotate previously exposed credentials, approve and verify the legacy data migration with a restorable backup, configure R2, then validate a controlled release and live acceptance journeys. Payments, automated subscription billing and social login remain deferred; the current release scope is guest checkout with cash on delivery.
+
 The source changes and build outputs are local. No commit, production deployment, production database writes, owner creation or credential rotation was performed.
 
 ## What was found and corrected
