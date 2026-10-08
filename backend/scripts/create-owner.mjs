@@ -13,7 +13,10 @@ if (
   throw new Error(
     "Set OWNER_USERNAME, OWNER_EMAIL, OWNER_PASSWORD (12+ characters) and MONGODB_URI locally before running this script.",
   );
-await mongoose.connect(MONGODB_URI);
+await mongoose.connect(MONGODB_URI, {
+  autoIndex: false,
+  serverSelectionTimeoutMS: 10000,
+});
 try {
   if (
     await User.exists({
