@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "lint": "eslint src server.js scripts --ext js,mjs --max-warnings 0"
+    "lint": "eslint src server.js scripts --ext js,mjs --max-warnings 0",
+    "seed:origins": "node scripts/seed-origins-of-beauty.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
