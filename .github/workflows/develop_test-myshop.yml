@@ -1,4 +1,3 @@
-
 name: OwnShop Staging Backend Deployment
 
 on:
@@ -18,27 +17,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
-      - name: Install root dependencies
+      - name: Install API dependencies
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm audit --omit=dev
+          npm run lint
+
+      - name: Install verification tools
         run: npm ci
 
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
-
-      - name: Run tests
+      - name: Verify backend behavior
         run: npm test
+
+      - name: Build frontend applications
+        run: |
+          npm ci --prefix ecommerce
+          npm run lint --prefix ecommerce
+          npm run build --prefix ecommerce
+          npm ci --prefix super-admin
+          npm run lint --prefix super-admin
+          npm run build --prefix super-admin
+
+      - name: Verify browser interactions
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-app
           path: backend/
-          include-hidden-files: true
+          include-hidden-files: false
           if-no-files-found: error
 
   deploy:
@@ -56,7 +72,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'test-myshop'
-          slot-name: 'Production'
+          app-name: "test-myshop"
+          slot-name: "Production"
           package: backend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BE7D38DE4B764F5CAA4E1AD0FD3A2BDD }}
