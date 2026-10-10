@@ -5,21 +5,28 @@ import { QueryState, money } from "../../../components/common/QueryState";
 import { Pagination } from "../../../components/common/Pagination";
 import { errorMessage } from "../../../services/api";
 import { useProductImages } from "../hooks/useProductImages";
+import StructuredDescriptionEditor, {
+  normalizeSections,
+} from "./StructuredDescriptionEditor";
+import { TbEdit, TbPhotoPlus, TbPlus, TbTrash } from "react-icons/tb";
 export function ProductEditor({ product, hook, base }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: product?.name || "",
+    title: product?.title || "",
+    subtitle: product?.subtitle || "",
+    shortDescription: product?.shortDescription || "",
     description: product?.description || "",
+    descriptionSections: normalizeSections(product?.descriptionSections),
     price: product?.price ?? "",
     stock: product?.stock ?? 0,
     discount: product?.discount ?? 0,
     category: product?.category?._id || "",
     tenantId: product?.tenantId || hook.stores.data?.[0]?._id || "",
-    imageUrls: (product?.images || []).map((image) => image.url).join("\n"),
+    images: product?.images || [],
     isActive: product?.isActive ?? true,
   });
   const upload = useProductImages(form.tenantId, hook.platform);
-  const [uploadedImages, setUploadedImages] = useState([]);
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
   const submit = (event) => {
@@ -29,18 +36,16 @@ export function ProductEditor({ product, hook, base }) {
       price: Number(form.price),
       stock: Number(form.stock),
       discount: Number(form.discount),
-      images: form.imageUrls
-        .split(/\r?\n/)
-        .map((url) => url.trim())
-        .filter(Boolean)
-        .map(
-          (url) =>
-            [...(product?.images || []), ...uploadedImages].find(
-              (image) => image.url === url,
-            ) || { url },
-        ),
+      descriptionSections: form.descriptionSections.map((section) => ({
+        ...section,
+        title: section.title.trim(),
+        content: section.content.trim(),
+        items: section.items.map((item) => item.trim()).filter(Boolean),
+        rows: section.rows
+          .map((row) => ({ label: row.label.trim(), value: row.value.trim() }))
+          .filter((row) => row.label || row.value),
+      })),
     };
-    delete data.imageUrls;
     if (!hook.platform) delete data.tenantId;
     hook.mutation.mutate(
       { method: product ? "patch" : "post", id: product?._id, data },
@@ -77,12 +82,40 @@ export function ProductEditor({ product, hook, base }) {
         />
       </label>
       <label>
-        Description
+        Storefront title
+        <input
+          value={form.title}
+          onChange={(event) => set("title", event.target.value)}
+          placeholder="Optional display title"
+        />
+      </label>
+      <label>
+        Subtitle
+        <input
+          value={form.subtitle}
+          onChange={(event) => set("subtitle", event.target.value)}
+          placeholder="A short supporting line"
+        />
+      </label>
+      <label>
+        Short summary
+        <textarea
+          value={form.shortDescription}
+          onChange={(event) => set("shortDescription", event.target.value)}
+          placeholder="Shown beside the product image"
+        />
+      </label>
+      <label>
+        Product overview
         <textarea
           value={form.description}
           onChange={(event) => set("description", event.target.value)}
         />
       </label>
+      <StructuredDescriptionEditor
+        value={form.descriptionSections}
+        onChange={(sections) => set("descriptionSections", sections)}
+      />
       <div className="form-grid">
         {["price", "stock", "discount"].map((field) => (
           <label key={field}>
@@ -119,16 +152,11 @@ export function ProductEditor({ product, hook, base }) {
           </select>
         </label>
       )}
-      <label>
-        Image URLs (one per line)
-        <textarea
-          placeholder="https://..."
-          value={form.imageUrls}
-          onChange={(event) => set("imageUrls", event.target.value)}
-        />
-      </label>
-      <label>
-        Upload Photos (JPEG, PNG or WebP; up to 5 MB each)
+      <label className="product-upload">
+        <span>
+          <TbPhotoPlus /> Product photos
+        </span>
+        <small>Upload JPEG, PNG or WebP files, up to 5 MB each.</small>
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -139,15 +167,9 @@ export function ProductEditor({ product, hook, base }) {
             if (files.length)
               upload.mutate(files, {
                 onSuccess: (images) => {
-                  setUploadedImages((current) => [...current, ...images]);
                   setForm((current) => ({
                     ...current,
-                    imageUrls: [
-                      current.imageUrls,
-                      ...images.map((image) => image.url),
-                    ]
-                      .filter(Boolean)
-                      .join("\n"),
+                    images: [...current.images, ...images],
                   }));
                 },
               });
@@ -155,6 +177,28 @@ export function ProductEditor({ product, hook, base }) {
           }}
         />
       </label>
+      {!!form.images.length && (
+        <div className="product-image-editor">
+          {form.images.map((image, index) => (
+            <div key={image.public_id || image.url}>
+              <img src={image.url} alt="" />
+              {index === 0 && <span>Primary</span>}
+              <button
+                type="button"
+                aria-label={`Remove image ${index + 1}`}
+                onClick={() =>
+                  set(
+                    "images",
+                    form.images.filter((_, itemIndex) => itemIndex !== index),
+                  )
+                }
+              >
+                <TbTrash />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {upload.isPending && <p role="status">Uploading photos...</p>}
       {upload.isError && (
         <p role="alert" className="error">
@@ -203,7 +247,7 @@ export function ProductsManager({ base = "/admin/products" }) {
         </div>
         {!editing && (
           <Link className="btn-primary" to={`${base}/create`}>
-            + Add Product
+            <TbPlus /> Add Product
           </Link>
         )}
       </div>
@@ -277,7 +321,7 @@ export function ProductsManager({ base = "/admin/products" }) {
                             aria-label={`Edit ${item.name}`}
                             to={`${base}/${item._id}/edit`}
                           >
-                            Edit
+                            <TbEdit /> Edit
                           </Link>
                           <button
                             className="text-button danger"
@@ -297,7 +341,7 @@ export function ProductsManager({ base = "/admin/products" }) {
                                 });
                             }}
                           >
-                            Delete
+                            <TbTrash /> Delete
                           </button>
                         </div>
                       </td>

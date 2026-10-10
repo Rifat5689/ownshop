@@ -10,6 +10,7 @@ export function useSettingsPage(platform) {
   });
   const [form, setForm] = useState({});
   const [saved, setSaved] = useState(false);
+  const [imageError, setImageError] = useState("");
   useEffect(() => {
     if (query.data) setForm(query.data);
   }, [query.data]);
@@ -20,6 +21,13 @@ export function useSettingsPage(platform) {
         supportEmail: form.supportEmail,
         description: form.description,
         shippingFee: Number(form.shippingFee || 0),
+        shippingFees: {
+          insideDhaka: Number(form.shippingFees?.insideDhaka || 0),
+          outsideDhaka: Number(form.shippingFees?.outsideDhaka || 0),
+        },
+        useZoneShippingFees: true,
+        showShippingFees: form.showShippingFees !== false,
+        whatsappNumber: form.whatsappNumber,
         currency: form.currency,
         timezone: form.timezone,
       }),
@@ -27,6 +35,29 @@ export function useSettingsPage(platform) {
       setSaved(true);
       client.invalidateQueries({ queryKey: [endpoint] });
       client.invalidateQueries({ queryKey: ["store"] });
+    },
+  });
+  const imageUpload = useMutation({
+    mutationFn: (file) => {
+      setImageError("");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
+        throw new Error("Choose a JPEG, PNG or WebP image.");
+      if (file.size > 5 * 1024 * 1024)
+        throw new Error("Store image must be smaller than 5 MB.");
+      const body = new FormData();
+      body.append("images", file);
+      return request("post", "/stores/mine/profile-photo", body, {
+        headers: { "Content-Type": undefined },
+      });
+    },
+    onSuccess: (profileImage) => {
+      setForm((current) => ({ ...current, profileImage }));
+      client.invalidateQueries({ queryKey: [endpoint] });
+      client.invalidateQueries({ queryKey: ["store"] });
+    },
+    onError: (error) => {
+      if (!error?.response)
+        setImageError(error?.message || "Image upload failed.");
     },
   });
   return {
@@ -37,6 +68,8 @@ export function useSettingsPage(platform) {
       setForm(value);
     },
     mutation,
+    imageUpload,
+    imageError,
     saved,
   };
 }

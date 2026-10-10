@@ -11,6 +11,41 @@ const imageSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const descriptionRowSchema = new mongoose.Schema(
+  {
+    label: { type: String, trim: true, maxlength: 120, default: "" },
+    value: { type: String, trim: true, maxlength: 500, default: "" },
+  },
+  { _id: false },
+);
+
+const descriptionSectionSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: [
+        "text",
+        "bullets",
+        "table",
+        "highlights",
+        "usage",
+        "ingredients",
+        "faq",
+      ],
+      required: true,
+    },
+    title: { type: String, trim: true, maxlength: 120, default: "" },
+    enabled: { type: Boolean, default: true },
+    content: { type: String, maxlength: 10000, default: "" },
+    items: {
+      type: [{ type: String, trim: true, maxlength: 500 }],
+      default: [],
+    },
+    rows: { type: [descriptionRowSchema], default: [] },
+  },
+  { _id: false },
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -28,6 +63,14 @@ const productSchema = new mongoose.Schema(
     subtitle: { type: String, default: "" },
     description: { type: String, default: "" },
     shortDescription: { type: String, default: "" },
+    descriptionSections: {
+      type: [descriptionSectionSchema],
+      default: [],
+      validate: {
+        validator: (sections) => sections.length <= 20,
+        message: "A product can have up to 20 description sections",
+      },
+    },
     slug: {
       type: String,
       required: true,

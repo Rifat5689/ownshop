@@ -4,7 +4,10 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import Product from "./product.model.js";
 import Category from "../category/category.model.js";
 import { generateUniqueSlug } from "../../services/slug.service.js";
-import { uploadProductImage } from "../../services/product-images.service.js";
+import {
+  deleteProductImages,
+  uploadProductImage,
+} from "../../services/product-images.service.js";
 export const uploadProductImages = asyncHandler(async (req, res) => {
   if (!req.files?.length) throw new ApiError(400, "Choose at least one image");
   const images = [];
@@ -34,6 +37,47 @@ const validateProduct = async (body, tenantId) => {
       body.images.some((image) => !/^https:\/\//.test(image.url || "")))
   )
     throw new ApiError(400, "Use HTTPS image URLs");
+  if (body.descriptionSections !== undefined) {
+    const allowed = new Set([
+      "text",
+      "bullets",
+      "table",
+      "highlights",
+      "usage",
+      "ingredients",
+      "faq",
+    ]);
+    if (
+      !Array.isArray(body.descriptionSections) ||
+      body.descriptionSections.length > 20 ||
+      body.descriptionSections.some(
+        (section) =>
+          !section ||
+          !allowed.has(section.type) ||
+          typeof section.title !== "string" ||
+          section.title.length > 120 ||
+          typeof section.enabled !== "boolean" ||
+          typeof section.content !== "string" ||
+          section.content.length > 10000 ||
+          !Array.isArray(section.items) ||
+          section.items.length > 100 ||
+          section.items.some(
+            (item) => typeof item !== "string" || item.length > 500,
+          ) ||
+          !Array.isArray(section.rows) ||
+          section.rows.length > 100 ||
+          section.rows.some(
+            (row) =>
+              !row ||
+              typeof row.label !== "string" ||
+              row.label.length > 120 ||
+              typeof row.value !== "string" ||
+              row.value.length > 500,
+          ),
+      )
+    )
+      throw new ApiError(400, "Invalid structured description");
+  }
 };
 const fields = [
   "name",
@@ -41,6 +85,7 @@ const fields = [
   "title",
   "subtitle",
   "shortDescription",
+  "descriptionSections",
   "price",
   "category",
   "stock",
@@ -103,7 +148,9 @@ const getProductByslug = asyncHandler(async (req, res) => {
     tenantId: req.store._id,
     slug: req.params.slug,
     isActive: true,
-  }).select("-images.public_id -totalViews -__v -createdAt -updatedAt").populate("category", "name slug");
+  })
+    .select("-images.public_id -totalViews -__v -createdAt -updatedAt")
+    .populate("category", "name slug");
   if (!product) throw new ApiError(404, "Product not found");
   return res.json(new ApiResponse(200, product, "Product fetched"));
 });
@@ -133,12 +180,28 @@ const updateProduct = asyncHandler(async (req, res) => {
   return res.json(new ApiResponse(200, product, "Product updated"));
 });
 const deleteProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findOneAndDelete({
+  const filter = {
     _id: req.params.id,
     tenantId: req.store._id,
-  });
+  };
+  const product = await Product.findOne(filter);
   if (!product) throw new ApiError(404, "Product not found");
+  await deleteProductImages(product.images, req.store._id);
+  await Product.deleteOne(filter);
   return res.json(new ApiResponse(200, null, "Product deleted"));
+});
+const deleteAllProducts = asyncHandler(async (req, res) => {
+  const products = await Product.find({ tenantId: req.store._id }).select("images");
+  const images = products.flatMap((product) => product.images || []);
+  const deletedImages = await deleteProductImages(images, req.store._id);
+  const result = await Product.deleteMany({ tenantId: req.store._id });
+  return res.json(
+    new ApiResponse(
+      200,
+      { deletedProducts: result.deletedCount, deletedImages },
+      "All store products and uploaded images deleted",
+    ),
+  );
 });
 export {
   createProduct,
@@ -148,4 +211,5 @@ export {
   getProductByslug,
   updateProduct,
   deleteProduct,
+  deleteAllProducts,
 };

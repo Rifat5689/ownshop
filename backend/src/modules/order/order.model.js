@@ -24,6 +24,12 @@ const orderSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     orderItems: [orderItemSchema],
     shippingDetails: { name: String, phone: String, address: String },
+    customerUsername: { type: String, trim: true, maxlength: 40, default: "" },
+    shippingZone: {
+      type: String,
+      enum: ["insideDhaka", "outsideDhaka"],
+      default: "insideDhaka",
+    },
     shippingFee: { type: Number, default: 0, min: 0 },
     totalPrice: { type: Number, required: true, min: 0 },
     payment: {

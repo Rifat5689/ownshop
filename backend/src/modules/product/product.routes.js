@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createProduct,
   deleteProduct,
+  deleteAllProducts,
   getAllPrdoucts,
   getStoreProducts,
   getProductById,
@@ -35,7 +36,8 @@ productRouter
       req.user.role === "SUPER_ADMIN" ? next() : requireTenant(req, res, next),
     getAllPrdoucts,
   )
-  .post(requireTenant, createProduct);
+  .post(requireTenant, createProduct)
+  .delete(requireTenant, deleteAllProducts);
 productRouter
   .route("/:id")
   .get(requireTenant, getProductById)

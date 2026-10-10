@@ -40,6 +40,17 @@ const validateCheckout = (body) => {
     throw new ApiError(400, "Duplicate product in cart");
   if (body.paymentMethod && body.paymentMethod !== "cash on delivery")
     throw new ApiError(400, "Only cash on delivery is currently supported");
+  if (
+    body.shippingZone &&
+    !["insideDhaka", "outsideDhaka"].includes(body.shippingZone)
+  )
+    throw new ApiError(400, "Select a valid delivery area");
+  if (
+    body.customerUsername !== undefined &&
+    (typeof body.customerUsername !== "string" ||
+      body.customerUsername.trim().length > 40)
+  )
+    throw new ApiError(400, "Invalid customer username");
 };
 const transitions = {
   pending: ["confirmed", "cancelled"],

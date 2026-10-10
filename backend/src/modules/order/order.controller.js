@@ -22,9 +22,15 @@ const createOrder = asyncHandler(async (req, res) => {
       req.body.shippingDetails[field].trim(),
     ]),
   );
+  shippingDetails.phone = shippingDetails.phone.replace(/\D/g, "");
   const requestHash = createHash("sha256")
     .update(
-      JSON.stringify({ orderItems: req.body.orderItems, shippingDetails }),
+      JSON.stringify({
+        orderItems: req.body.orderItems,
+        shippingDetails,
+        shippingZone: req.body.shippingZone,
+        customerUsername: req.body.customerUsername,
+      }),
     )
     .digest("hex");
   const session = await mongoose.startSession();
@@ -69,7 +75,10 @@ const createOrder = asyncHandler(async (req, res) => {
           quantity: item.quantity,
         });
       }
-      const shippingFee = req.store.shippingFee || 0;
+      const shippingZone = req.body.shippingZone || "insideDhaka";
+      const shippingFee = req.store.useZoneShippingFees
+        ? req.store.shippingFees?.[shippingZone] || 0
+        : req.store.shippingFee || 0;
       const totalPrice =
         Math.round(
           (items.reduce(
@@ -85,6 +94,8 @@ const createOrder = asyncHandler(async (req, res) => {
             tenantId: req.store._id,
             orderItems: items,
             shippingDetails,
+            customerUsername: String(req.body.customerUsername || "").trim(),
+            shippingZone,
             shippingFee,
             totalPrice,
             payment: {
@@ -189,6 +200,7 @@ const getCustomers = asyncHandler(async (req, res) => {
         _id: "$shippingDetails.phone",
         name: { $last: "$shippingDetails.name" },
         address: { $last: "$shippingDetails.address" },
+        username: { $last: "$customerUsername" },
         orders: { $sum: 1 },
         total: { $sum: "$totalPrice" },
       },

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useCatalog } from "../../../features/store/hooks/useCatalog";
 import { ProductCard } from "../../../features/store/components/ProductCard";
@@ -8,6 +8,7 @@ export default function Products() {
   const { products, categories, storeSlug } = useCatalog();
   const { categorySlug } = useParams();
   const [params, setParams] = useSearchParams();
+  const gridTopRef = useRef(null);
   const change = (key, value) =>
     setParams((current) => {
       const next = new URLSearchParams(current);
@@ -34,6 +35,11 @@ export default function Products() {
       Number(params.get("page")) || 1,
     ),
   );
+  useEffect(() => {
+    if (!products.isPending) {
+      gridTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [page, products.isPending]);
   return (
     <div className="shop-container">
       <p className="breadcrumb">
@@ -86,6 +92,7 @@ export default function Products() {
           </select>
         </label>
       </div>
+      <div ref={gridTopRef} className="ob-product-grid-top" />
       <QueryState query={products} empty={!filtered.length}>
         <div className="product-grid">
           {filtered.slice((page - 1) * 12, page * 12).map((product) => (
@@ -98,8 +105,9 @@ export default function Products() {
           disabled={page === 1}
           onClick={() =>
             setParams((current) => {
-              current.set("page", page - 1);
-              return current;
+              const next = new URLSearchParams(current);
+              next.set("page", page - 1);
+              return next;
             })
           }
         >
@@ -112,8 +120,9 @@ export default function Products() {
           disabled={page * 12 >= filtered.length}
           onClick={() =>
             setParams((current) => {
-              current.set("page", page + 1);
-              return current;
+              const next = new URLSearchParams(current);
+              next.set("page", page + 1);
+              return next;
             })
           }
         >

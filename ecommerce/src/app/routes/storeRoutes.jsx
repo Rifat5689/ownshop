@@ -3,7 +3,7 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { BeautyStoreLayout as StoreLayout } from "../../layouts/BeautyStoreLayout";
 import Home from "../../pages/store/Home/BeautyHome";
 import Products from "../../pages/store/Products/Products";
-import ProductDetails from "../../pages/store/ProductDetails/ProductDetails";
+import ProductDetails from "../../pages/store/ProductDetails/ProfessionalProductDetails";
 import Categories from "../../pages/store/Categories/Categories";
 import Cart from "../../pages/store/Cart/Cart";
 import Checkout from "../../pages/store/Checkout/Checkout";

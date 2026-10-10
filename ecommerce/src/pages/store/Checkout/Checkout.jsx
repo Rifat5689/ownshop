@@ -4,8 +4,17 @@ import { useCheckout } from "../../../features/orders/hooks/useCheckout";
 import { money } from "../../../components/common/QueryState";
 import { errorMessage } from "../../../services/api";
 export default function Checkout() {
-  const { shipping, setShipping, mutation, cart, store, storeSlug } =
-    useCheckout();
+  const {
+    shipping,
+    setShipping,
+    shippingZone,
+    setShippingZone,
+    shippingFee,
+    mutation,
+    cart,
+    store,
+    storeSlug,
+  } = useCheckout();
   if (!cart.items.length)
     return (
       <div className="state-card">
@@ -59,6 +68,47 @@ export default function Checkout() {
             Delivery
           </label>
           <p className="muted">Pay your merchant when your order arrives.</p>
+          <h2>Delivery Area</h2>
+          <div className="checkout-zone-options">
+            <label>
+              <input
+                type="radio"
+                name="shippingZone"
+                value="insideDhaka"
+                checked={shippingZone === "insideDhaka"}
+                onChange={() => setShippingZone("insideDhaka")}
+              />
+              <span>
+                Inside Dhaka{" "}
+                <strong>
+                  {money(
+                    store.useZoneShippingFees
+                      ? store.shippingFees?.insideDhaka
+                      : shippingFee,
+                  )}
+                </strong>
+              </span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="shippingZone"
+                value="outsideDhaka"
+                checked={shippingZone === "outsideDhaka"}
+                onChange={() => setShippingZone("outsideDhaka")}
+              />
+              <span>
+                Outside Dhaka{" "}
+                <strong>
+                  {money(
+                    store.useZoneShippingFees
+                      ? store.shippingFees?.outsideDhaka
+                      : shippingFee,
+                  )}
+                </strong>
+              </span>
+            </label>
+          </div>
         </section>
         <aside className="card order-summary">
           <h2>Order Summary</h2>
@@ -71,11 +121,10 @@ export default function Checkout() {
             Subtotal <strong>{money(cart.subtotal)}</strong>
           </div>
           <div>
-            Shipping <strong>{money(store.shippingFee)}</strong>
+            Shipping <strong>{money(shippingFee)}</strong>
           </div>
           <div className="total">
-            Total{" "}
-            <strong>{money(cart.subtotal + (store.shippingFee || 0))}</strong>
+            Total <strong>{money(cart.subtotal + shippingFee)}</strong>
           </div>
           <p className="muted">
             Availability and prices are confirmed when you place your order.

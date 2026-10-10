@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "ornionshop"
-  }
+    "default": "ornionshop",
+    "staging": "test-ownshop"
+  },
+  "targets": {},
+  "etags": {}
 }

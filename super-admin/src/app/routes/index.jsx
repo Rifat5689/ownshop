@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
-import { AdminLayout } from "../../layouts/AdminLayout";
+import { ProfessionalAdminLayout as AdminLayout } from "../../layouts/ProfessionalAdminLayout";
 import { ProtectedRoute } from "../../components/common/ProtectedRoute";
 import Dashboard from "../../pages/Dashboard";
 import Stores from "../../pages/Stores";

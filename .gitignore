@@ -8,3 +8,7 @@ environment variables data/
 test-results/
 playwright-report/
 *.log
+.android-sdk/
+.jdk21/
+artifacts/android-commandlinetools.zip
+artifacts/microsoft-jdk-21-windows-x64.zip*

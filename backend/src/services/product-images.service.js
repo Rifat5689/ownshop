@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import ApiError from "../utils/ApiError.js";
 
-export async function uploadProductImage(file, tenantId) {
+export async function uploadProductImage(file, tenantId, folder = "products") {
   const bytes = file.buffer;
   const valid =
     (file.mimetype === "image/jpeg" &&
@@ -49,7 +53,10 @@ export async function uploadProductImage(file, tenantId) {
     "image/png": "png",
     "image/webp": "webp",
   }[file.mimetype];
-  const key = `stores/${tenantId}/products/${randomUUID()}.${extension}`;
+  const safeFolder = ["products", "profile"].includes(folder)
+    ? folder
+    : "products";
+  const key = `stores/${tenantId}/${safeFolder}/${randomUUID()}.${extension}`;
   const client = new S3Client({
     maxAttempts: 2,
     requestHandler: { connectionTimeout: 5000, requestTimeout: 15000 },
@@ -82,4 +89,44 @@ export async function uploadProductImage(file, tenantId) {
     url: `${publicBase.href.replace(/\/$/, "")}/${key}`,
     public_id: key,
   };
+}
+
+export async function deleteProductImages(images, tenantId) {
+  const prefix = `stores/${tenantId}/products/`;
+  const keys = [...new Set((images || []).map((image) => image?.public_id))].filter(
+    (key) => typeof key === "string" && key.startsWith(prefix),
+  );
+  if (!keys.length) return 0;
+  const client = new S3Client({
+    maxAttempts: 2,
+    requestHandler: { connectionTimeout: 5000, requestTimeout: 15000 },
+    region: "auto",
+    endpoint: `https://${process.env.CLOUD_STORAGE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.CLOUD_STORAGE_ACCESS_KEY,
+      secretAccessKey: process.env.CLOUD_STORAGE_SECRET_KEY,
+    },
+  });
+  try {
+    for (let index = 0; index < keys.length; index += 1000) {
+      const batch = keys.slice(index, index + 1000);
+      const result = await client.send(
+        new DeleteObjectsCommand({
+          Bucket: process.env.CLOUD_STORAGE_BUCKET,
+          Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+        }),
+        { abortSignal: AbortSignal.timeout(20000) },
+      );
+      if (result.Errors?.length)
+        throw new Error("Cloud storage rejected one or more image deletions");
+    }
+  } catch {
+    throw new ApiError(
+      503,
+      "Product images could not be removed from storage. No products were deleted.",
+    );
+  } finally {
+    client.destroy();
+  }
+  return keys.length;
 }

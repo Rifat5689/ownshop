@@ -15,6 +15,7 @@ export function useCheckout() {
     phone: "",
     address: "",
   });
+  const [shippingZone, setShippingZone] = useState("insideDhaka");
   const [attempt, setAttempt] = useState(null);
   const mutation = useMutation({
     mutationFn: async () => {
@@ -24,6 +25,16 @@ export function useCheckout() {
           quantity: item.quantity,
         })),
         shippingDetails: shipping,
+        shippingZone,
+        customerUsername: (() => {
+          try {
+            return JSON.parse(
+              localStorage.getItem(`ownshop:customer:${store._id}`),
+            )?.username;
+          } catch {
+            return undefined;
+          }
+        })(),
         paymentMethod: "cash on delivery",
       };
       const fingerprint = JSON.stringify(body);
@@ -57,5 +68,18 @@ export function useCheckout() {
       });
     },
   });
-  return { shipping, setShipping, mutation, cart, store, storeSlug };
+  const shippingFee = store.useZoneShippingFees
+    ? store.shippingFees?.[shippingZone] || 0
+    : store.shippingFee || 0;
+  return {
+    shipping,
+    setShipping,
+    shippingZone,
+    setShippingZone,
+    shippingFee,
+    mutation,
+    cart,
+    store,
+    storeSlug,
+  };
 }

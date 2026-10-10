@@ -2,6 +2,7 @@ import React from "react";
 import { useSettingsPage } from "../hooks/useSettingsPage";
 import { QueryState } from "../../../components/common/QueryState";
 import { errorMessage } from "../../../services/api";
+import { TbBrandWhatsapp, TbPhotoPlus } from "react-icons/tb";
 export function SettingsView({ platform = false }) {
   const hook = useSettingsPage(platform);
   const fields = platform
@@ -14,7 +15,7 @@ export function SettingsView({ platform = false }) {
         ["name", "Store Name"],
         ["description", "Description"],
         ["supportEmail", "Support Email"],
-        ["shippingFee", "Shipping Fee (BDT)"],
+        ["whatsappNumber", "WhatsApp Number"],
       ];
   return (
     <>
@@ -33,6 +34,34 @@ export function SettingsView({ platform = false }) {
           }}
         >
           <h2>General Settings</h2>
+          {!platform && (
+            <div className="store-profile-setting">
+              {hook.form.profileImage?.url ? (
+                <img
+                  src={hook.form.profileImage.url}
+                  alt="Current store profile"
+                />
+              ) : (
+                <div>
+                  <TbPhotoPlus aria-hidden="true" />
+                </div>
+              )}
+              <label>
+                Store profile image
+                <small>JPEG, PNG or WebP, up to 5 MB.</small>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={hook.imageUpload.isPending}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) hook.imageUpload.mutate(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          )}
           {fields.map(([field, label]) => (
             <label key={field}>
               {label}
@@ -54,6 +83,82 @@ export function SettingsView({ platform = false }) {
               />
             </label>
           ))}
+          {!platform && (
+            <>
+              <div className="form-grid">
+                <label>
+                  Inside Dhaka Shipping (BDT)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={hook.form.shippingFees?.insideDhaka ?? ""}
+                    onChange={(event) =>
+                      hook.setForm({
+                        ...hook.form,
+                        shippingFees: {
+                          ...hook.form.shippingFees,
+                          insideDhaka: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Outside Dhaka Shipping (BDT)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={hook.form.shippingFees?.outsideDhaka ?? ""}
+                    onChange={(event) =>
+                      hook.setForm({
+                        ...hook.form,
+                        shippingFees: {
+                          ...hook.form.shippingFees,
+                          outsideDhaka: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <label className="row">
+                <input
+                  type="checkbox"
+                  checked={hook.form.showShippingFees !== false}
+                  onChange={(event) =>
+                    hook.setForm({
+                      ...hook.form,
+                      showShippingFees: event.target.checked,
+                    })
+                  }
+                />
+                Show delivery fees and WhatsApp contact on the storefront
+              </label>
+              {hook.form.whatsappNumber && (
+                <p className="muted">
+                  <TbBrandWhatsapp aria-hidden="true" /> Customers will see this
+                  contact number.
+                </p>
+              )}
+            </>
+          )}
+          {(hook.imageUpload?.isError || hook.imageError) && (
+            <p className="error" role="alert">
+              {hook.imageError || errorMessage(hook.imageUpload.error)}
+            </p>
+          )}
+          {hook.imageUpload?.isPending && (
+            <p role="status">
+              <span className="spinner" /> Uploading store image...
+            </p>
+          )}
+          {hook.imageUpload?.isSuccess && (
+            <p role="status" className="stock-label">
+              Store profile image updated.
+            </p>
+          )}
           <label>
             Currency
             <input value="BDT — Bangladeshi Taka" readOnly />

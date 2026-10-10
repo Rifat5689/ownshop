@@ -8,6 +8,11 @@ import {
 import { QueryState, money } from "../../../components/common/QueryState";
 import { Pagination } from "../../../components/common/Pagination";
 import { errorMessage } from "../../../services/api";
+import {
+  TbRefresh,
+  TbSearch,
+  TbShoppingCart,
+} from "react-icons/tb";
 export default function Orders() {
   const { id, storeSlug } = useParams();
   const hook = useOrdersPage(id);
@@ -83,25 +88,40 @@ export default function Orders() {
     );
   return (
     <>
-      <div className="dashboard-header">
+      <div className="dashboard-header merchant-page-heading admin-heading-with-icon">
+        <span className="admin-title-icon"><TbShoppingCart /></span>
         <div>
           <h1>Orders</h1>
           <p>Track fulfilment and delivery.</p>
         </div>
-        <button className="btn-primary" onClick={() => hook.query.refetch()}>
-          Refresh
+        <button className="btn-secondary" onClick={() => hook.query.refetch()}>
+          <TbRefresh aria-hidden="true" /> Refresh
         </button>
       </div>
-      <div className="filters">
-        <label>
-          Search
+      <div className="order-status-tabs">
+        {["", "pending", "processing", "shipped", "delivered", "cancelled"].map((status) => (
+          <button
+            key={status || "all"}
+            className={hook.status === status ? "active" : ""}
+            onClick={() => hook.setStatus(status)}
+          >
+            {status ? status[0].toUpperCase() + status.slice(1) : "All Orders"}
+            <span>
+              {(hook.query.data || []).filter((order) => !status || order.status === status).length}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="filters admin-filter-bar">
+        <label className="admin-search-box">
+          <TbSearch aria-hidden="true" />
           <input
-            placeholder="Search orders..."
+            placeholder="Search orders, customer name or order ID..."
             value={hook.search}
             onChange={(event) => hook.setSearch(event.target.value)}
           />
         </label>
-        <label>
+        <label className="admin-select-control">
           Status
           <select
             value={hook.status}
@@ -115,7 +135,7 @@ export default function Orders() {
         </label>
       </div>
       <QueryState query={hook.query}>
-        <div className="card table-container">
+        <div className="card table-container admin-list-card order-list-card">
           <table className="table">
             <thead>
               <tr>

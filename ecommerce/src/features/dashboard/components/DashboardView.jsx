@@ -2,6 +2,15 @@ import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useDashboard } from "../hooks/useDashboard";
 import { QueryState, money } from "../../../components/common/QueryState";
+import {
+  TbBox,
+  TbCalendar,
+  TbCoins,
+  TbNotes,
+  TbRefresh,
+  TbShoppingCart,
+  TbUsers,
+} from "react-icons/tb";
 function RevenueChart({ daily = [] }) {
   const max = Math.max(1, ...daily.map((day) => day.revenue));
   const points = daily
@@ -145,9 +154,10 @@ export function DashboardView({ platform = false }) {
         ["Total Revenue", compactMoney(data.totalRevenue)],
         ["Pending Orders", data.pendingOrders],
       ];
+  const merchantIcons = [TbBox, TbShoppingCart, TbUsers, TbCoins, TbNotes];
   return (
-    <>
-      <div className="dashboard-header">
+    <div className={platform ? "platform-dashboard-page" : "merchant-dashboard-page"}>
+      <div className="dashboard-header merchant-page-heading">
         <div>
           <h1>Dashboard</h1>
           <p>
@@ -158,25 +168,39 @@ export function DashboardView({ platform = false }) {
           <label className="sr-only" htmlFor="dashboard-range">
             Date Range
           </label>
-          <select
-            id="dashboard-range"
-            value={days}
-            onChange={(event) => setDays(event.target.value)}
+          <div className="admin-control-with-icon">
+            <TbCalendar aria-hidden="true" />
+            <select
+              id="dashboard-range"
+              value={days}
+              onChange={(event) => setDays(event.target.value)}
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </div>
+          <button
+            className={`btn-primary dashboard-refresh ${query.isFetching ? "is-refreshing" : ""}`}
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
           >
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-          </select>
-          <button className="btn-primary" onClick={() => query.refetch()}>
-            Refresh
+            <TbRefresh aria-hidden="true" /> Refresh
           </button>
         </div>
       </div>
       <QueryState query={query}>
         <div className="stats-grid">
           {stats.map(([label, value], i) => (
-            <div className="card stat-card" key={label}>
+            <div className={`card stat-card stat-card-${i + 1}`} key={label}>
               <span
-                className={`stat-icon ${["blue", "purple", "green", "orange", "blue"][i]}`}
+                className={`stat-icon ${["green", "blue", "purple", "orange", "red"][i]}`}
+              >
+                {React.createElement(merchantIcons[i] || TbBox, {
+                  "aria-hidden": true,
+                })}
+              </span>
+              <span
+                className="legacy-stat-icon"
               >
                 ◈
               </span>
@@ -193,6 +217,13 @@ export function DashboardView({ platform = false }) {
                   {value ?? 0}
                 </strong>
               </div>
+              <span className="stat-trend" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
             </div>
           ))}
         </div>
@@ -326,6 +357,6 @@ export function DashboardView({ platform = false }) {
           </div>
         </section>
       </QueryState>
-    </>
+    </div>
   );
 }

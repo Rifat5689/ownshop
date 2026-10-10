@@ -71,11 +71,20 @@ export default function Cart() {
               Subtotal <strong>{money(subtotal)}</strong>
             </div>
             <div>
-              Shipping <strong>{money(store.shippingFee)}</strong>
+              Shipping{" "}
+              <strong>
+                {store.useZoneShippingFees && store.shippingFees
+                  ? `From ${money(
+                      Math.min(
+                        store.shippingFees.insideDhaka,
+                        store.shippingFees.outsideDhaka,
+                      ),
+                    )}`
+                  : money(store.shippingFee)}
+              </strong>
             </div>
             <div className="total">
-              Total{" "}
-              <strong>{money(subtotal + (store.shippingFee || 0))}</strong>
+              Subtotal <strong>{money(subtotal)}</strong>
             </div>
             <Link className="btn-primary" to={`/${storeSlug}/checkout`}>
               Proceed to Checkout
