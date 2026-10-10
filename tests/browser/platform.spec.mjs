@@ -26,8 +26,8 @@ test("root is not found and catalog, search, category, sorting and details work"
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await page.goto(`${shop}/shopvista`);
   await page
-    .getByRole("link", { name: "Shop Now", exact: false })
-    .first()
+    .locator(".ob-hero article.active")
+    .getByRole("link", { name: "Shop the collection", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "All Products", exact: true }),
@@ -49,8 +49,10 @@ test("root is not found and catalog, search, category, sorting and details work"
   await expect(
     page.getByRole("heading", { name: "Studio Headphones" }),
   ).toBeVisible();
-  await page.getByLabel("Quantity", { exact: true }).fill("2");
-  await page.getByRole("button", { name: "Add to Cart", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Quantity", exact: true })
+    .selectOption("2");
+  await page.getByRole("button", { name: "Add to cart", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("added to your cart");
   expect(errors).toEqual([]);
 });
@@ -58,7 +60,7 @@ test("cart quantities persist and are isolated across stores", async ({
   page,
 }) => {
   await page.goto(`${shop}/shopvista/products/studio-headphones`);
-  await page.getByRole("button", { name: "Add to Cart", exact: true }).click();
+  await page.getByRole("button", { name: "Add to cart", exact: true }).click();
   await page.goto(`${shop}/shopvista/cart`);
   await expect(
     page.getByRole("heading", { name: "Your Cart (1)" }),
@@ -109,7 +111,9 @@ test("checkout submits a real order and tracking opens", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Thank you for your order!" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Track Order" }).click();
+  await page
+    .getByRole("link", { name: "Track Order", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "pending", exact: true }),
   ).toBeVisible();
@@ -189,11 +193,11 @@ test("category CRUD and customer details are functional", async ({ page }) => {
     page.getByRole("cell", { name: `${name} Updated`, exact: true }),
   ).toHaveCount(0);
   await nav(page, "/shopvista/admin/customers");
-  await page
-    .getByRole("link", { name: "View Details", exact: false })
-    .first()
-    .click();
-  await expect(page.getByText("Phone: 01712345678")).toBeVisible();
+  const customer = page
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "01712345678" }) });
+  await expect(customer).toContainText("Browser QA Buyer");
+  await expect(customer).toContainText("QA Street, Dhaka");
 });
 test("store owner can create a store and disable/reactivate it", async ({
   page,
@@ -275,9 +279,7 @@ test("mobile and desktop pages fit the viewport and generate screenshots", async
     "/shopvista/account",
   ]) {
     await page.goto(`${shop}${route}`);
-    await expect(
-      page.locator(".shop-container,.state-card").first(),
-    ).toBeVisible();
+    await expect(page.locator("main > *").first()).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
