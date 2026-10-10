@@ -201,15 +201,16 @@ test("category CRUD and customer details are functional", async ({ page }) => {
     page.getByRole("cell", { name: `${name} Updated`, exact: true }),
   ).toHaveCount(0);
   await nav(page, "/shopvista/admin/customers");
-  const details = page.getByRole("link", { name: "View Details" }).first();
-  if (await details.isVisible()) {
+  const customer = page
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "01712345678" }) });
+  await expect(customer).toContainText("Browser QA Buyer");
+  const details = customer.getByRole("link", { name: /^View Details/ });
+  if ((await details.count()) > 0) {
     await details.click();
     await expect(page.getByText("Phone: 01712345678")).toBeVisible();
+    await expect(page.getByText("QA Street, Dhaka")).toBeVisible();
   } else {
-    const customer = page
-      .getByRole("row")
-      .filter({ has: page.getByRole("cell", { name: "01712345678" }) });
-    await expect(customer).toContainText("Browser QA Buyer");
     await expect(customer).toContainText("QA Street, Dhaka");
   }
 });
